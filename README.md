@@ -88,11 +88,8 @@ The model displays both lower limbs simultaneously — the original right leg an
 How to Run Locally
 
 
-Clone the repository:
+Clone the repository
 
-
-bash   git clone https://github.com/sidharthsreedar/Anatom.git
-   cd Anatom
 
 
 Start a local server (required — browsers block loading .glb files from file://):
