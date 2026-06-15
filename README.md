@@ -108,17 +108,4 @@ Or use VS Code + Live Server extension: right-click nerve-atlas.html → Open wi
 
 Click Open lower-limb.glb and select the included lower-limb 4.glb file to load the model.
 
-
-
-Adding a Preview Image
-
-To add a screenshot to this README:
-
-
-Take a screenshot of the viewer and save it as preview.png
-Place preview.png in the root of this repository (same folder as this README)
-Push it to GitHub — it will automatically appear above
-
-
-
 Created by Mohan Gadre and Sidharth Sreedar
