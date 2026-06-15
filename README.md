@@ -10,6 +10,7 @@ Enjoy!
 
 
 
+<img width="242" height="554" alt="Screenshot 2026-06-15 122731" src="https://github.com/user-attachments/assets/3ee74ea4-5e76-4a85-9dce-446a5bd457b3" />
 
 
 Features
