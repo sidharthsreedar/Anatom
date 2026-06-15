@@ -1,0 +1,2563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lower Limb Nerve Atlas</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #080810;
+  color: #e0e0e0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── SIDEBAR ── */
+#sidebar {
+  width: 270px;
+  min-width: 270px;
+  background: #0e0e1a;
+  border-right: 1px solid #1e1e30;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#sidebar-header {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid #1e1e30;
+}
+#sidebar-header h1 {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffd700;
+  letter-spacing: 0.4px;
+}
+#sidebar-header p {
+  font-size: 11px;
+  color: #555;
+  margin-top: 3px;
+}
+#nerve-tree {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
+}
+#nerve-tree::-webkit-scrollbar { width: 4px; }
+#nerve-tree::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+.plexus-group { margin-bottom: 2px; }
+.plexus-label {
+  padding: 8px 16px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #444;
+}
+.ns-division {
+  padding: 11px 16px 6px;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: #ffd700;
+  border-top: 1px solid #1e1e30;
+  border-bottom: 1px solid #15152a;
+  background: rgba(255,215,0,0.03);
+}
+.ns-division:first-child { border-top: none; margin-top: 0; }
+.ns-note {
+  padding: 5px 16px 9px;
+  font-size: 10px;
+  color: #4a4a5a;
+  font-style: italic;
+  line-height: 1.4;
+}
+.nerve-item {
+  padding: 4px 14px 4px calc(14px + var(--depth, 0) * 10px);
+  font-size: 11.5px;
+  color: #888;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.7;
+}
+.nerve-item:hover { color: #ffd700; background: rgba(255,215,0,0.04); }
+.nerve-item.selected {
+  color: #ffd700;
+  border-left-color: #ffd700;
+  background: rgba(255,215,0,0.09);
+  font-weight: 600;
+}
+.nerve-item.highlighted {
+  color: #e8a000;
+  border-left-color: rgba(255,160,0,0.4);
+  background: rgba(255,160,0,0.04);
+}
+
+/* ── CANVAS AREA ── */
+#canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+#canvas { width: 100%; height: 100%; display: block; }
+
+/* ── DROP / LOAD OVERLAY ── */
+#drop-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: #080810;
+  z-index: 20;
+}
+#drop-overlay h2 { font-size: 22px; color: #ffd700; margin-bottom: 8px; font-weight: 700; }
+#drop-overlay p { color: #555; font-size: 13px; margin-bottom: 28px; }
+#file-btn {
+  background: #ffd700;
+  color: #000;
+  border: none;
+  padding: 11px 28px;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+#file-btn:hover { background: #ffe033; }
+#file-input { display: none; }
+#status-msg {
+  margin-top: 14px;
+  font-size: 12px;
+  color: #888;
+  min-height: 18px;
+}
+
+/* ── LOADING BAR ── */
+#loading-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #ffd700, #ff8800, #ffd700);
+  background-size: 200%;
+  display: none;
+  animation: shimmer 1.2s linear infinite;
+  z-index: 25;
+}
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ── INFO PANEL ── */
+#info-panel {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 272px;
+  background: rgba(8, 8, 18, 0.94);
+  border: 1px solid #2a2a40;
+  border-radius: 10px;
+  padding: 15px;
+  display: none;
+  backdrop-filter: blur(10px);
+  z-index: 10;
+}
+#info-panel h3 { font-size: 13.5px; color: #ffd700; margin-bottom: 10px; font-weight: 700; line-height: 1.3; }
+.info-row { display: flex; gap: 8px; margin-bottom: 6px; font-size: 11.5px; }
+.info-label { color: #555; min-width: 72px; flex-shrink: 0; }
+.info-value { color: #ccc; }
+#path-display {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #1e1e30;
+  font-size: 10.5px;
+  color: #666;
+  line-height: 1.7;
+  word-break: break-word;
+}
+#path-label { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; }
+
+/* ── CONTROLS HINT ── */
+#controls-hint {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  font-size: 10.5px;
+  color: #333;
+  text-align: right;
+  line-height: 1.9;
+  pointer-events: none;
+}
+
+/* ── LEGEND ── */
+#legend {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+.legend-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #555; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── RESET BTN ── */
+#reset-btn {
+  position: absolute;
+  bottom: 20px;
+  left: 16px;
+  background: rgba(30,30,50,0.9);
+  border: 1px solid #333;
+  color: #888;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  display: none;
+  transition: color 0.15s, border-color 0.15s;
+}
+#reset-btn:hover { color: #ffd700; border-color: #ffd700; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h1>Lower Limb Atlas</h1>
+    <p>Nervous system · vessels · muscles · imaging</p>
+  </div>
+  <div id="nerve-tree" id="nerve-tree">
+    <div id="tree-content"></div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="loading-bar"></div>
+  <canvas id="canvas"></canvas>
+
+  <div id="drop-overlay">
+    <h2>Lower Limb Nerve Atlas</h2>
+    <p>Load your anatomical model to begin</p>
+    <button id="file-btn" onclick="document.getElementById('file-input').click()">
+      Open lower-limb.glb
+    </button>
+    <input type="file" id="file-input" accept=".glb">
+    <div id="status-msg"></div>
+  </div>
+
+  <div id="controls-hint">
+    Drag · rotate &nbsp; Scroll · zoom<br>
+    Right-drag · pan &nbsp; Click nerve · select
+  </div>
+
+  <div id="legend">
+    <div class="legend-row"><div class="legend-dot" style="background:#ff1a1a"></div>Selected nerve</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#ff6600"></div>Downstream branches</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#6688aa;opacity:0.4"></div>Other structures</div>
+  </div>
+
+  <div id="info-panel">
+    <h3 id="nerve-name">—</h3>
+    <div class="info-row">
+      <span class="info-label">Spinal root</span>
+      <span class="info-value" id="nerve-root">—</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Territory</span>
+      <span class="info-value" id="nerve-territory">—</span>
+    </div>
+    <div id="path-display">
+      <div id="path-label">Path</div>
+      <div id="path-text"></div>
+    </div>
+  </div>
+
+  <button id="reset-btn" onclick="resetSelection()">Clear selection</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════════
+// NERVE GRAPH
+// Each entry: meshName (exact GLB node name), spinalRoot, territory,
+//             plexus, depth (for sidebar indent), children[]
+// ═══════════════════════════════════════════════════════════════════
+const NERVE_GRAPH = {
+  // ── LUMBAR PLEXUS ──────────────────────────────────────────────
+  "Lumbar Plexus": {
+    meshName: "Plexus lumbaris.r",
+    spinalRoot: "L1–L4",
+    territory: "Anterior thigh, medial leg, inguinal region",
+    plexus: "lumbar", depth: 0,
+    children: ["Femoral Nerve","Obturator Nerve","Ilioinguinal Nerve","Iliohypogastric Nerve","Genitofemoral Nerve","Lateral Femoral Cutaneous Nerve"]
+  },
+  "Femoral Nerve": {
+    meshName: "Femoral nerve.r",
+    spinalRoot: "L2–L4",
+    territory: "Anterior thigh, medial leg and foot",
+    plexus: "lumbar", depth: 1,
+    children: ["Anterior Cutaneous Branches (Femoral)","Muscular Branches (Femoral)","Saphenous Nerve"]
+  },
+  "Anterior Cutaneous Branches (Femoral)": {
+    meshName: "Anterior cutaneous branches of Femoral nerve.r",
+    spinalRoot: "L2–L4",
+    territory: "Anterior and medial thigh skin",
+    plexus: "lumbar", depth: 2, children: []
+  },
+  "Muscular Branches (Femoral)": {
+    meshName: "Muscular branches of the Femoral nerve.r",
+    spinalRoot: "L2–L4",
+    territory: "Quadriceps, sartorius, pectineus",
+    plexus: "lumbar", depth: 2, children: []
+  },
+  "Saphenous Nerve": {
+    meshName: "Saphenous branch of Femoralis nerve.r",
+    spinalRoot: "L3–L4",
+    territory: "Medial leg and foot",
+    plexus: "lumbar", depth: 2,
+    children: ["Infrapatellar Branch (Saphenous)","Medial Crural Cutaneous Branches"]
+  },
+  "Infrapatellar Branch (Saphenous)": {
+    meshName: "Infrapatellar branch of Saphenous nerve.r",
+    spinalRoot: "L3–L4",
+    territory: "Skin over patella",
+    plexus: "lumbar", depth: 3, children: []
+  },
+  "Medial Crural Cutaneous Branches": {
+    meshName: "Saphenous nerve (Medial crural cutaneous branches).r",
+    spinalRoot: "L3–L4",
+    territory: "Medial leg skin",
+    plexus: "lumbar", depth: 3, children: []
+  },
+  "Obturator Nerve": {
+    meshName: "Obturator nerve.r",
+    spinalRoot: "L2–L4",
+    territory: "Medial thigh, hip joint",
+    plexus: "lumbar", depth: 1,
+    children: ["Anterior Branch (Obturator)","Posterior Branch (Obturator)"]
+  },
+  "Anterior Branch (Obturator)": {
+    meshName: "Anterior branch of Obturator nerve.r",
+    spinalRoot: "L2–L4",
+    territory: "Medial thigh skin, adductor longus/brevis/gracilis",
+    plexus: "lumbar", depth: 2,
+    children: ["Cutaneous Branch (Obturator)"]
+  },
+  "Cutaneous Branch (Obturator)": {
+    meshName: "Cutaneous br of Anterior br of Obturator nerve.r",
+    spinalRoot: "L2–L4",
+    territory: "Medial thigh skin",
+    plexus: "lumbar", depth: 3, children: []
+  },
+  "Posterior Branch (Obturator)": {
+    meshName: "Posterior branch of Obturator nerve.r",
+    spinalRoot: "L3–L4",
+    territory: "Obturator externus, adductor magnus, knee joint",
+    plexus: "lumbar", depth: 2, children: []
+  },
+  "Ilioinguinal Nerve": {
+    meshName: "Ilioinguinal nerve.r",
+    spinalRoot: "L1",
+    territory: "Groin, upper medial thigh, genital skin",
+    plexus: "lumbar", depth: 1, children: []
+  },
+  "Iliohypogastric Nerve": {
+    meshName: "Anterior branch of Iliohypogastric nerve.r",
+    spinalRoot: "L1",
+    territory: "Hypogastric region, upper buttock",
+    plexus: "lumbar", depth: 1,
+    children: ["Lateral Cutaneous Branch (Iliohypogastric)"]
+  },
+  "Lateral Cutaneous Branch (Iliohypogastric)": {
+    meshName: "Lateral cutaneous branch of Iliohypogaticus nerve.r",
+    spinalRoot: "L1",
+    territory: "Upper lateral buttock skin",
+    plexus: "lumbar", depth: 2, children: []
+  },
+  "Genitofemoral Nerve": {
+    meshName: null,
+    spinalRoot: "L1–L2",
+    territory: "Femoral triangle skin, cremaster reflex",
+    plexus: "lumbar", depth: 1,
+    children: ["Femoral Branch (Genitofemoral)","Genital Branch (Genitofemoral)"]
+  },
+  "Femoral Branch (Genitofemoral)": {
+    meshName: "Femoral branch of Genitofemoral nerve.r",
+    spinalRoot: "L1–L2",
+    territory: "Femoral triangle skin",
+    plexus: "lumbar", depth: 2, children: []
+  },
+  "Genital Branch (Genitofemoral)": {
+    meshName: "Genital branch of Genitofemoral nerve.r",
+    spinalRoot: "L1–L2",
+    territory: "Cremaster, scrotal / labial skin",
+    plexus: "lumbar", depth: 2, children: []
+  },
+  "Lateral Femoral Cutaneous Nerve": {
+    meshName: "Lateral femoral cuteneous nerve.r",
+    spinalRoot: "L2–L3",
+    territory: "Lateral thigh skin (anterior and posterior)",
+    plexus: "lumbar", depth: 1, children: []
+  },
+
+  // ── SACRAL PLEXUS ─────────────────────────────────────────────
+  "Sciatic Nerve": {
+    meshName: "Schiatic nerve.r",
+    spinalRoot: "L4–S3",
+    territory: "Entire leg below knee (via branches), posterior thigh",
+    plexus: "sacral", depth: 0,
+    children: ["Tibial Nerve","Common Fibular Nerve"]
+  },
+  "Tibial Nerve": {
+    meshName: "Tibial nerve.r",
+    spinalRoot: "L4–S3",
+    territory: "Posterior leg, entire sole of foot",
+    plexus: "sacral", depth: 1,
+    children: ["Medial Calcaneal Branches","Medial Plantar Nerve","Lateral Plantar Nerve","Medial Sural Cutaneous Nerve"]
+  },
+  "Medial Calcaneal Branches": {
+    meshName: "Medial calcaneal branches of Tibial nerve.r",
+    spinalRoot: "S1–S2",
+    territory: "Medial heel skin",
+    plexus: "sacral", depth: 2, children: []
+  },
+  "Medial Plantar Nerve": {
+    meshName: "Medial plantar nerve.r",
+    spinalRoot: "L4–L5",
+    territory: "Medial sole, toes 1–3½",
+    plexus: "sacral", depth: 2,
+    children: ["Common Plantar Digital Nerves","Proper Plantar Digital Branches (Medial)"]
+  },
+  "Common Plantar Digital Nerves": {
+    meshName: "Common plantar digital nerves.r",
+    spinalRoot: "L4–L5",
+    territory: "Digital clefts 1–3",
+    plexus: "sacral", depth: 3, children: []
+  },
+  "Proper Plantar Digital Branches (Medial)": {
+    meshName: "Proper plantar digital branches (Medial plantar nerve).r",
+    spinalRoot: "L4–L5",
+    territory: "Medial 3½ toes, plantar surface",
+    plexus: "sacral", depth: 3, children: []
+  },
+  "Lateral Plantar Nerve": {
+    meshName: "Lateral plantar nerve.r",
+    spinalRoot: "S1–S2",
+    territory: "Lateral sole, lateral 1½ toes",
+    plexus: "sacral", depth: 2,
+    children: ["Superficial Branch (Lateral Plantar)","Deep Branch (Lateral Plantar)","Proper Plantar Digital Branches (Lateral)"]
+  },
+  "Superficial Branch (Lateral Plantar)": {
+    meshName: "Superficial branch of Lateral plantar nerve.r",
+    spinalRoot: "S1–S2",
+    territory: "Lateral sole skin, small toe",
+    plexus: "sacral", depth: 3, children: []
+  },
+  "Deep Branch (Lateral Plantar)": {
+    meshName: "Deep branch of Lateral plantar nerve.r",
+    spinalRoot: "S1–S2",
+    territory: "Intrinsic foot muscles (lateral group)",
+    plexus: "sacral", depth: 3, children: []
+  },
+  "Proper Plantar Digital Branches (Lateral)": {
+    meshName: "Proper plantar digital branches (Lateral plantar nerve).r",
+    spinalRoot: "S1–S2",
+    territory: "Lateral 1½ toes, plantar surface",
+    plexus: "sacral", depth: 3, children: []
+  },
+  "Medial Sural Cutaneous Nerve": {
+    meshName: "Medial sural cutaneous nerve.r",
+    spinalRoot: "S1–S2",
+    territory: "Joins lateral sural cutaneous nerve to form sural nerve",
+    plexus: "sacral", depth: 2, children: []
+  },
+  "Common Fibular Nerve": {
+    meshName: "Common fibular nerve.r",
+    spinalRoot: "L4–S2",
+    territory: "Anterior and lateral leg, dorsum of foot",
+    plexus: "sacral", depth: 1,
+    children: ["Deep Fibular Nerve","Superficial Fibular Nerve","Lateral Sural Cutaneous Nerve"]
+  },
+  "Deep Fibular Nerve": {
+    meshName: "Deep fibular nerve.r",
+    spinalRoot: "L4–S1",
+    territory: "Anterior leg muscles, first dorsal web space",
+    plexus: "sacral", depth: 2,
+    children: ["Medial Branch (Deep Fibular)","Lateral Branch (Deep Fibular)","Dorsal Digital Branches (Deep Fibular)"]
+  },
+  "Medial Branch (Deep Fibular)": {
+    meshName: "Medial branch of deep fibular nerve.r",
+    spinalRoot: "L4–S1",
+    territory: "First dorsal web space skin",
+    plexus: "sacral", depth: 3, children: []
+  },
+  "Lateral Branch (Deep Fibular)": {
+    meshName: "Lateral branch of deep fibular nerve.r",
+    spinalRoot: "L4–S1",
+    territory: "Extensor digitorum brevis, extensor hallucis brevis",
+    plexus: "sacral", depth: 3, children: []
+  },
+  "Dorsal Digital Branches (Deep Fibular)": {
+    meshName: "Dorsal digital branches of deep fibular nerve.r",
+    spinalRoot: "L4–S1",
+    territory: "Dorsal first web space skin",
+    plexus: "sacral", depth: 3, children: []
+  },
+  "Superficial Fibular Nerve": {
+    meshName: "Superficial fibular nerve.r",
+    spinalRoot: "L5–S1",
+    territory: "Lateral leg skin, dorsum of foot (except 1st web space)",
+    plexus: "sacral", depth: 2,
+    children: ["Medial Dorsal Cutaneous Nerve","Lateral Dorsal Cutaneous Nerve","Dorsal Digital Branches (Superficial Fibular)"]
+  },
+  "Medial Dorsal Cutaneous Nerve": {
+    meshName: "Medial dorsal cutaneous nerve.r",
+    spinalRoot: "L5–S1",
+    territory: "Medial dorsum of foot",
+    plexus: "sacral", depth: 3, children: []
+  },
+  "Lateral Dorsal Cutaneous Nerve": {
+    meshName: "Lateral dorsal cutaneous nerve.r",
+    spinalRoot: "L5–S1",
+    territory: "Lateral dorsum of foot",
+    plexus: "sacral", depth: 3, children: []
+  },
+  "Dorsal Digital Branches (Superficial Fibular)": {
+    meshName: "Dorsal digital branches of superficial fibular nerve.r",
+    spinalRoot: "L5–S1",
+    territory: "Dorsal toes 2–5",
+    plexus: "sacral", depth: 3, children: []
+  },
+  "Lateral Sural Cutaneous Nerve": {
+    meshName: "Lateral sural cutaneous nerve.r",
+    spinalRoot: "L5–S2",
+    territory: "Lateral leg skin (upper part)",
+    plexus: "sacral", depth: 2, children: []
+  },
+  "Superior Gluteal Nerve": {
+    meshName: "Superior gluteal nerve.r",
+    spinalRoot: "L4–S1",
+    territory: "Gluteus medius, gluteus minimus, tensor fasciae latae",
+    plexus: "sacral", depth: 0, children: []
+  },
+  "Inferior Gluteal Nerve": {
+    meshName: "Inferior gluteal nerve.r",
+    spinalRoot: "L5–S2",
+    territory: "Gluteus maximus",
+    plexus: "sacral", depth: 0, children: []
+  },
+  "Posterior Cutaneous Nerve of Thigh": {
+    meshName: "Posterior cutaneous nerve of the thigh.r",
+    spinalRoot: "S1–S3",
+    territory: "Posterior thigh and buttock skin",
+    plexus: "sacral", depth: 0,
+    children: ["Inferior Clunial Branches"]
+  },
+  "Inferior Clunial Branches": {
+    meshName: "Inferior clunial br of post cutaneous nerve of the thigh.r",
+    spinalRoot: "S1–S3",
+    territory: "Lower buttock skin",
+    plexus: "sacral", depth: 1, children: []
+  },
+  "Sural Nerve": {
+    meshName: "Sural nerve.r",
+    spinalRoot: "S1–S2",
+    territory: "Posterior-lateral leg, lateral foot and heel",
+    plexus: "sacral", depth: 0,
+    children: ["Lateral Dorsal Cutaneous (Sural)","Lateral Plantar Cutaneous (Sural)","Lateral Calcaneal Nerves"]
+  },
+  "Lateral Dorsal Cutaneous (Sural)": {
+    meshName: "Lateral dorsal cutaneous nerve (Sural n).r",
+    spinalRoot: "S1–S2",
+    territory: "Lateral dorsal foot skin",
+    plexus: "sacral", depth: 1, children: []
+  },
+  "Lateral Plantar Cutaneous (Sural)": {
+    meshName: "Lateral plantar cutaneous nerve (Sural n).r",
+    spinalRoot: "S1–S2",
+    territory: "Lateral plantar foot skin",
+    plexus: "sacral", depth: 1, children: []
+  },
+  "Lateral Calcaneal Nerves": {
+    meshName: "Lateral calcaneal nerves.r",
+    spinalRoot: "S1–S2",
+    territory: "Lateral heel skin",
+    plexus: "sacral", depth: 1, children: []
+  },
+  "Superior Clunial Nerve": {
+    meshName: "Superior clunial nerve (posterior rami).r",
+    spinalRoot: "L1–L3 (post. rami)",
+    territory: "Upper buttock skin",
+    plexus: "sacral", depth: 0, children: []
+  }
+};
+
+// Three.js transforms node names when loading GLTF:
+//   spaces → underscores, periods → removed
+// e.g. "Femoral nerve.r" → "Femoral_nerveR" (lowercase r)
+// We must apply the same transform when building our lookup.
+function toThreeName(s) {
+  return s.replace(/ /g, '_').replace(/\./g, '');
+}
+
+// Reverse lookup: Three.js mesh name → nerve display name
+const MESH_TO_NERVE = {};
+for (const [name, data] of Object.entries(NERVE_GRAPH)) {
+  if (data.meshName) MESH_TO_NERVE[toThreeName(data.meshName)] = name;
+}
+
+// Collect all descendants (inclusive of root)
+function getDescendants(root) {
+  const result = new Set();
+  const q = [root];
+  while (q.length) {
+    const n = q.shift();
+    if (!NERVE_GRAPH[n]) continue;
+    result.add(n);
+    for (const c of NERVE_GRAPH[n].children) q.push(c);
+  }
+  return result;
+}
+
+// Ancestors path from top-level to nerve
+function getPath(nerveName) {
+  const parent = {};
+  for (const [name, data] of Object.entries(NERVE_GRAPH)) {
+    for (const child of data.children) parent[child] = name;
+  }
+  const path = [nerveName];
+  let cur = nerveName;
+  while (parent[cur]) { cur = parent[cur]; path.unshift(cur); }
+  return path;
+}
+
+// Ordered sidebar entries
+const LUMBAR_ORDER = [
+  "Lumbar Plexus","Femoral Nerve","Anterior Cutaneous Branches (Femoral)",
+  "Muscular Branches (Femoral)","Saphenous Nerve","Infrapatellar Branch (Saphenous)",
+  "Medial Crural Cutaneous Branches","Obturator Nerve","Anterior Branch (Obturator)",
+  "Cutaneous Branch (Obturator)","Posterior Branch (Obturator)",
+  "Ilioinguinal Nerve","Iliohypogastric Nerve","Lateral Cutaneous Branch (Iliohypogastric)",
+  "Genitofemoral Nerve","Femoral Branch (Genitofemoral)","Genital Branch (Genitofemoral)",
+  "Lateral Femoral Cutaneous Nerve"
+];
+const SACRAL_ORDER = [
+  "Sciatic Nerve","Tibial Nerve","Medial Calcaneal Branches",
+  "Medial Plantar Nerve","Common Plantar Digital Nerves","Proper Plantar Digital Branches (Medial)",
+  "Lateral Plantar Nerve","Superficial Branch (Lateral Plantar)","Deep Branch (Lateral Plantar)",
+  "Proper Plantar Digital Branches (Lateral)","Medial Sural Cutaneous Nerve",
+  "Common Fibular Nerve","Deep Fibular Nerve","Medial Branch (Deep Fibular)",
+  "Lateral Branch (Deep Fibular)","Dorsal Digital Branches (Deep Fibular)",
+  "Superficial Fibular Nerve","Medial Dorsal Cutaneous Nerve","Lateral Dorsal Cutaneous Nerve",
+  "Dorsal Digital Branches (Superficial Fibular)","Lateral Sural Cutaneous Nerve",
+  "Superior Gluteal Nerve","Inferior Gluteal Nerve",
+  "Posterior Cutaneous Nerve of Thigh","Inferior Clunial Branches",
+  "Sural Nerve","Lateral Dorsal Cutaneous (Sural)","Lateral Plantar Cutaneous (Sural)",
+  "Lateral Calcaneal Nerves","Superior Clunial Nerve"
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// BUILD SIDEBAR
+// ═══════════════════════════════════════════════════════════════════
+function buildSidebar() {
+  const container = document.getElementById('tree-content');
+
+  function addGroup(title, nerves) {
+    const group = document.createElement('div');
+    group.className = 'plexus-group';
+    const label = document.createElement('div');
+    label.className = 'plexus-label';
+    label.textContent = title;
+    group.appendChild(label);
+
+    for (const name of nerves) {
+      const data = NERVE_GRAPH[name];
+      if (!data) continue;
+      const item = document.createElement('div');
+      item.className = 'nerve-item';
+      item.style.setProperty('--depth', data.depth || 0);
+      item.id = itemId(name);
+      const prefix = data.depth > 0 ? '╴'.repeat(data.depth) + ' ' : '';
+      item.textContent = prefix + name;
+      item.title = data.territory;
+      item.addEventListener('click', () => selectNerve(name));
+      group.appendChild(item);
+    }
+    container.appendChild(group);
+  }
+
+  // ── CENTRAL NERVOUS SYSTEM (header + placeholder) ──
+  const cnsDiv = document.createElement('div');
+  cnsDiv.className = 'ns-division';
+  cnsDiv.textContent = 'Central Nervous System';
+  container.appendChild(cnsDiv);
+
+  const cnsNote = document.createElement('div');
+  cnsNote.className = 'ns-note';
+  cnsNote.textContent = 'Brain & spinal cord — not included in this lower-limb model';
+  container.appendChild(cnsNote);
+
+  // ── PERIPHERAL NERVOUS SYSTEM ──
+  const pnsDiv = document.createElement('div');
+  pnsDiv.className = 'ns-division';
+  pnsDiv.textContent = 'Peripheral Nervous System';
+  container.appendChild(pnsDiv);
+
+  addGroup('LUMBAR PLEXUS  L1–L4', LUMBAR_ORDER);
+  addGroup('SACRAL PLEXUS  L4–S3', SACRAL_ORDER);
+}
+
+function itemId(name) {
+  return 'ni-' + name.replace(/[^a-z0-9]/gi, '_');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// THREE.JS
+// ═══════════════════════════════════════════════════════════════════
+const canvas  = document.getElementById('canvas');
+const ctnr    = document.getElementById('canvas-container');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.localClippingEnabled = true;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(ctnr.clientWidth, ctnr.clientHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.shadowMap.enabled = false;
+
+const scene  = new THREE.Scene();
+scene.background = new THREE.Color(0x080810);
+
+const camera = new THREE.PerspectiveCamera(45, ctnr.clientWidth / ctnr.clientHeight, 0.001, 200);
+camera.position.set(0, 0.4, 1.5);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 0.05;
+controls.maxDistance = 10;
+
+// Lighting
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+sun.position.set(1, 3, 2);
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x8899cc, 0.3);
+fill.position.set(-2, -1, -2);
+scene.add(fill);
+
+// Material factories — depthTest:false so nerves always render
+// through surrounding geometry regardless of depth.
+function matNerveDefault() {
+  return new THREE.MeshBasicMaterial({
+    color: 0x998800, transparent: true, opacity: 0.35,
+    depthTest: false, depthWrite: false, side: THREE.DoubleSide
+  });
+}
+function matNerveDimmed() {
+  // Non-selected nerves when something else is selected — nearly invisible
+  return new THREE.MeshBasicMaterial({
+    color: 0x444422, transparent: true, opacity: 0.08,
+    depthTest: false, depthWrite: false, side: THREE.DoubleSide
+  });
+}
+function matNerveSelected() {
+  // Bright vivid red — maximum contrast
+  return new THREE.MeshBasicMaterial({
+    color: 0xff1a1a, transparent: false,
+    depthTest: false, depthWrite: false, side: THREE.DoubleSide
+  });
+}
+function matNerveDescendant(depthRatio) {
+  // Orange cascade, fading slightly at deeper levels
+  return new THREE.MeshBasicMaterial({
+    color: 0xff6600, transparent: true,
+    opacity: 0.85 - depthRatio * 0.25,
+    depthTest: false, depthWrite: false, side: THREE.DoubleSide
+  });
+}
+function matOther() {
+  return new THREE.MeshStandardMaterial({
+    color: 0x6688aa, transparent: true, opacity: 0.05,
+    roughness: 0.9, metalness: 0,
+    depthWrite: false, side: THREE.DoubleSide
+  });
+}
+
+// State
+let meshMap      = {};   // GLB node name → Mesh
+let selectedNerve = null;
+let animTimers   = [];
+
+// ═══════════════════════════════════════════════════════════════════
+// GLB LOADING
+// ═══════════════════════════════════════════════════════════════════
+function setStatus(msg, color) {
+  const el = document.getElementById('status-msg');
+  if (el) { el.textContent = msg; el.style.color = color || '#888'; }
+}
+
+document.getElementById('file-input').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const bar = document.getElementById('loading-bar');
+  bar.style.display = 'block';
+  setStatus('Loading ' + file.name + ' …');
+
+  // Use createObjectURL — more reliable than parse() for local GLBs
+  const objectURL = URL.createObjectURL(file);
+
+  const dracoLoader = new THREE.DRACOLoader();
+  dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+  dracoLoader.setDecoderConfig({ type: 'js' }); // use JS decoder (no WASM needed)
+
+  const loader = new THREE.GLTFLoader();
+  loader.setDRACOLoader(dracoLoader);
+  loader.load(
+    objectURL,
+    function(gltf) {                          // ── success ──
+      URL.revokeObjectURL(objectURL);
+      bar.style.display = 'none';
+      document.getElementById('drop-overlay').style.display = 'none';
+
+      const model = gltf.scene;
+      scene.add(model);
+
+      // ── DUPLICATE: mirror the right leg to create a left leg ──
+      // Helper: find first descendant whose anatomical name matches one of `names`
+      function meshMapRawFind(root, names) {
+        let found = null;
+        root.traverse(o => {
+          if (found) return;
+          const nm = (o.name && !/^mesh\./.test(o.name)) ? o.name
+                   : (o.parent && o.parent.name) || '';
+          if (names.includes(nm)) found = o;
+        });
+        return found;
+      }
+      // The GLB's spine, sacrum, coccyx and discs sit on the MIDLINE, so
+      // mirroring the whole model would create a second spine. We remove
+      // those axial/midline structures from the mirror, keeping them single.
+      const MIDLINE_AXIAL = [
+        'Coccyx','Sacrum',
+        'Lumbar vertebra (L1)','Lumbar vertebra (L2)','Lumbar vertebra (L3)',
+        'Lumbar vertebra (L4)','Lumbar vertebra (L5)','Thoracic vertebra (T12)',
+        'Annulus fibrosus L1 L2','Annulus fibrosus L2 L3','Annulus fibrosus L3 L4',
+        'Annulus fibrosus L4 L5','Annulus fibrosus L5 S1','Annulus fibrosus T12 L1',
+        'Symphysis of sacrococcygeal joint',
+        'Art cart of sacrococcygeal joint on coccyx',
+        'Art cart of sacrococcygeal joint on sacrum',
+        'Art cart of sacroiliac joint on sacrum',
+        'Iliolumbar ligament .r','Anterior sacro-iliac ligament.r',
+        'Interossea / Posterior sacro-iliac ligament.r',
+        'Sacrospinous ligament.r','Sacrotuberal ligament.r',
+        'Sup, Inf, Ant, Post, Pubic ligaments','Interpubic disc',
+      ];
+      const isMidline = (nm) => MIDLINE_AXIAL.some(m => nm === m || nm === m.trim());
+
+      const origBox  = new THREE.Box3().setFromObject(model);
+      const origSize = origBox.getSize(new THREE.Vector3());
+      const origCtr  = origBox.getCenter(new THREE.Vector3());
+
+      // Find the sagittal midline plane = x-position of the spine/sacrum.
+      // Reflecting across THIS plane places the left leg against the shared
+      // pelvis correctly (instead of floating off to the side).
+      let midlineX = origCtr.x;
+      (function(){
+        const sac = meshMapRawFind(model, ['Sacrum','Lumbar vertebra (L3)','Coccyx']);
+        if (sac) {
+          const b = new THREE.Box3().setFromObject(sac);
+          const c = b.getCenter(new THREE.Vector3());
+          midlineX = c.x;
+        }
+      })();
+
+      const mirrorModel = model.clone(true);
+
+      // Remove midline structures from the mirror copy
+      const toRemove = [];
+      mirrorModel.traverse(o => {
+        const nm = (o.name && !/^mesh\./.test(o.name)) ? o.name
+                 : (o.parent && o.parent.name) || '';
+        if (isMidline(nm)) toRemove.push(o);
+      });
+      toRemove.forEach(o => { if (o.parent) o.parent.remove(o); });
+
+      // True sagittal reflection across x = midlineX:  newX = 2*midlineX - x
+      mirrorModel.scale.x *= -1;
+      mirrorModel.position.x = 2 * midlineX;
+      mirrorModel.name = '__mirrorLeg';
+      scene.add(mirrorModel);
+      mirrorModel.traverse(o => { if (o.isMesh && o.material) o.material.side = THREE.DoubleSide; });
+
+      // Fit camera to BOTH legs
+      const box  = new THREE.Box3().setFromObject(scene);
+      const cnt  = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const maxD = Math.max(size.x, size.y, size.z);
+      camera.position.set(cnt.x, cnt.y + size.y * 0.05, cnt.z + maxD * 1.3);
+      camera.lookAt(cnt);
+      controls.target.copy(cnt);
+      controls.update();
+
+      // Assign materials; build meshMap
+      // Three.js often creates a named Group (anatomy name) containing
+      // an unnamed Mesh child. We resolve the name by checking:
+      //   1. obj.name (mesh's own name)
+      //   2. obj.parent.name (parent group's name)
+      //   3. obj.parent.parent.name (grandparent, for deeper nesting)
+      let nerveCount = 0, totalMesh = 0;
+
+      function resolvedName(obj) {
+        // GLTFLoader puts anatomical names on the Object3D (parent),
+        // and generic 'mesh.xxx' names on the Mesh primitive itself.
+        // Always prefer the most specific anatomical name up the chain.
+        const own = obj.name || '';
+        const par = (obj.parent && obj.parent.name) || '';
+        const gpar= (obj.parent && obj.parent.parent && obj.parent.parent.name) || '';
+        // If own name looks like a mesh primitive (mesh.NNN), use parent
+        if (/^mesh\./.test(own) || own === '') {
+          return par || gpar || own;
+        }
+        return own;
+      }
+
+      // Traverse the WHOLE scene (both legs) so duplicated meshes are tracked.
+      // meshMap    → first mesh per name (used for raycasting / single lookups)
+      // meshMapAll → array of ALL meshes per name (used to recolor both legs)
+      window.meshMapAll = window.meshMapAll || {};
+      scene.traverse(obj => {
+        if (!obj.isMesh) return;
+        totalMesh++;
+        const name = resolvedName(obj);
+        if (!name) return;
+        if (!meshMap[name]) meshMap[name] = obj;          // first wins
+        (meshMapAll[name] = meshMapAll[name] || []).push(obj);
+
+        const isNerve = !!MESH_TO_NERVE[name];
+        if (isNerve) nerveCount++;
+        const mat = isNerve ? matNerveDefault() : matOther();
+        if (Array.isArray(obj.material)) obj.material = obj.material.map(() => mat.clone());
+        else obj.material = mat;
+        obj.renderOrder = isNerve ? 2 : 1;
+      });
+
+      console.log(`Loaded: ${totalMesh} meshes, ${nerveCount} nerve meshes recognised`);
+      if (nerveCount === 0) {
+        const sample = Object.keys(meshMap).slice(0, 30).join('\n');
+        console.warn('Still 0 nerve matches. Sample mesh names:\n' + sample);
+      }
+    },
+    function(xhr) {                           // ── progress ──
+      if (xhr.total) {
+        const pct = Math.round(xhr.loaded / xhr.total * 100);
+        setStatus('Loading … ' + pct + '%');
+      }
+    },
+    function(err) {                           // ── error ──
+      URL.revokeObjectURL(objectURL);
+      bar.style.display = 'none';
+      const msg = err && err.message ? err.message : String(err);
+      console.error('GLTFLoader error:', err);
+      setStatus('Error: ' + msg, '#ff5555');
+    }
+  );
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SELECTION + PROPAGATION ANIMATION
+// ═══════════════════════════════════════════════════════════════════
+function setMesh(name, mat) {
+  const m = meshMap[name];
+  if (!m) return;
+  if (Array.isArray(m.material)) m.material = m.material.map(() => mat);
+  else m.material = mat;
+}
+
+function applyToNerveMesh(nerveName, mat) {
+  const data = NERVE_GRAPH[nerveName];
+  if (!data || !data.meshName) return;
+  setMesh(toThreeName(data.meshName), mat);
+}
+
+function resetAllNerves(dimmed) {
+  // dimmed=true → fade everything out before a selection is applied
+  const mat = dimmed ? matNerveDimmed() : matNerveDefault();
+  for (const name of Object.keys(NERVE_GRAPH)) {
+    applyToNerveMesh(name, mat);
+  }
+}
+
+function clearTimers() {
+  animTimers.forEach(clearTimeout);
+  animTimers = [];
+}
+
+function selectNerve(nerveName) {
+  if (!NERVE_GRAPH[nerveName]) return;
+  clearTimers();
+  selectedNerve = nerveName;
+
+  // Dim all nerves immediately so selection pops out
+  resetAllNerves(true);
+
+  // Update sidebar
+  document.querySelectorAll('.nerve-item').forEach(el => el.classList.remove('selected','highlighted'));
+  const selEl = document.getElementById(itemId(nerveName));
+  if (selEl) { selEl.classList.add('selected'); selEl.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
+
+  // Info panel
+  const data = NERVE_GRAPH[nerveName];
+  document.getElementById('nerve-name').textContent = nerveName;
+  document.getElementById('nerve-root').textContent = data.spinalRoot;
+  document.getElementById('nerve-territory').textContent = data.territory;
+  document.getElementById('path-text').textContent = getPath(nerveName).join(' → ');
+  document.getElementById('info-panel').style.display = 'block';
+  document.getElementById('reset-btn').style.display = 'block';
+
+  // Build level-order: [ [level0 names], [level1 names], ... ]
+  const levels = [];
+  let q = [{ name: nerveName, level: 0 }];
+  const maxDepth = { val: 0 };
+  const levelOf = {};
+  while (q.length) {
+    const { name, level } = q.shift();
+    if (!NERVE_GRAPH[name]) continue;
+    levelOf[name] = level;
+    if (!levels[level]) levels[level] = [];
+    levels[level].push(name);
+    if (level > maxDepth.val) maxDepth.val = level;
+    for (const c of NERVE_GRAPH[name].children) q.push({ name: c, level: level + 1 });
+  }
+
+  // Animate each level with staggered delay
+  levels.forEach((names, lvl) => {
+    const t = setTimeout(() => {
+      for (const name of names) {
+        // Sidebar highlight
+        const el = document.getElementById(itemId(name));
+        if (el && name !== nerveName) el.classList.add('highlighted');
+
+        // Mesh highlight
+        if (name === nerveName) {
+          applyToNerveMesh(name, matNerveSelected());
+        } else {
+          const ratio = maxDepth.val > 0 ? (levelOf[name] - 1) / maxDepth.val : 0;
+          applyToNerveMesh(name, matNerveDescendant(ratio));
+        }
+      }
+    }, lvl * 160);
+    animTimers.push(t);
+  });
+}
+
+function resetSelection() {
+  clearTimers();
+  selectedNerve = null;
+  resetAllNerves(false);
+  document.querySelectorAll('.nerve-item').forEach(el => el.classList.remove('selected','highlighted'));
+  document.getElementById('info-panel').style.display = 'none';
+  document.getElementById('reset-btn').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CLICK RAYCASTING
+// ═══════════════════════════════════════════════════════════════════
+const raycaster = new THREE.Raycaster();
+const mouse     = new THREE.Vector2();
+let mouseDownPos = null;
+
+canvas.addEventListener('mousedown', e => {
+  mouseDownPos = { x: e.clientX, y: e.clientY };
+});
+
+canvas.addEventListener('mouseup', e => {
+  if (!mouseDownPos) return;
+  const dx = e.clientX - mouseDownPos.x;
+  const dy = e.clientY - mouseDownPos.y;
+  if (Math.sqrt(dx*dx + dy*dy) > 5) return; // was a drag, not a click
+
+  const rect = canvas.getBoundingClientRect();
+  mouse.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+  mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  const nerveMeshes = Object.entries(meshMap)
+    .filter(([name]) => !!MESH_TO_NERVE[name])
+    .map(([, mesh]) => mesh);
+
+  const hits = raycaster.intersectObjects(nerveMeshes, false);
+  if (hits.length > 0) {
+    const hitName = hits[0].object.name;
+    const nName   = MESH_TO_NERVE[hitName];
+    if (nName) selectNerve(nName);
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER LOOP + RESIZE
+// ═══════════════════════════════════════════════════════════════════
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  const w = ctnr.clientWidth, h = ctnr.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+});
+
+// Init
+buildSidebar();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════
+  IMAGING + VASCULAR + MUSCLE PATCH  v7 — name resolution fixed
+  ═══════════════════════════════════════════════════════════════ -->
+<style>
+.sidebar-tab-row { display:flex; border-bottom:1px solid #1e1e30; flex-shrink:0; }
+.sidebar-tab {
+  flex:1; padding:7px 0; font-size:9.5px; font-weight:700;
+  text-transform:uppercase; letter-spacing:0.7px; text-align:center;
+  cursor:pointer; color:#444; border-bottom:2px solid transparent;
+  transition:color 0.15s, border-color 0.15s;
+}
+.sidebar-tab.active { color:#ffd700; border-bottom-color:#ffd700; }
+.side-panel { display:none; flex:1; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#333 transparent; }
+.side-panel.visible { display:block; }
+#nerve-tree.hidden { display:none; }
+
+/* vessel items */
+.vessel-item {
+  padding:3px 14px 3px calc(14px + var(--depth,0)*8px);
+  font-size:11px; cursor:pointer; border-left:2px solid transparent;
+  transition:color 0.1s,background 0.1s; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; line-height:1.65;
+}
+.vessel-item.artery        { color:#cc5555; }
+.vessel-item.artery:hover  { color:#ff8888; background:rgba(255,80,80,0.06); }
+.vessel-item.artery.active { color:#ff5555; border-left-color:#ff4444; background:rgba(255,60,60,0.10); font-weight:600; }
+.vessel-item.vein          { color:#5577cc; }
+.vessel-item.vein:hover    { color:#88aaff; background:rgba(80,100,255,0.06); }
+.vessel-item.vein.active   { color:#7799ff; border-left-color:#6688ff; background:rgba(80,100,255,0.10); font-weight:600; }
+
+/* muscle items */
+.muscle-item {
+  padding:3px 14px 3px calc(14px + var(--depth,0)*8px);
+  font-size:11px; cursor:pointer; border-left:2px solid transparent;
+  transition:color 0.1s,background 0.1s; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; line-height:1.65; color:#888;
+}
+.muscle-item:hover { color:#ffcc88; background:rgba(255,180,80,0.05); }
+.muscle-item.active { color:#ffcc44; border-left-color:#ffcc44; background:rgba(255,200,60,0.09); font-weight:600; }
+
+/* imaging bar */
+#imaging-bar {
+  position:absolute; bottom:60px; left:50%; transform:translateX(-50%);
+  width:380px; background:rgba(6,6,12,0.93); border:1px solid #252535;
+  border-radius:10px; padding:11px 18px 13px; backdrop-filter:blur(12px);
+  z-index:15; user-select:none;
+}
+#imaging-labels { display:flex; justify-content:space-between; font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:7px; }
+#imaging-labels span { color:#333344; transition:color 0.18s; }
+#imaging-labels span.active { color:#ffd700; }
+#imaging-slider {
+  -webkit-appearance:none; appearance:none; width:100%; height:3px;
+  background:linear-gradient(90deg,#c8dde8 0%,#909090 45%,#909090 55%,#c84050 100%);
+  border-radius:2px; outline:none; cursor:pointer;
+}
+#imaging-slider::-webkit-slider-thumb {
+  -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+  background:#ffd700; border:2px solid #06060c; cursor:grab; transition:transform 0.1s;
+}
+#imaging-slider::-webkit-slider-thumb:active{transform:scale(1.2);cursor:grabbing;}
+#imaging-slider::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#ffd700;border:2px solid #06060c;cursor:grab;}
+#imaging-mode-name{text-align:center;font-size:10px;color:#555566;margin-top:6px;letter-spacing:0.5px;}
+#imaging-legend{display:none;flex-wrap:wrap;gap:4px 10px;margin-top:9px;padding-top:8px;border-top:1px solid #1a1a28;}
+#imaging-legend.visible{display:flex;}
+.ileg{display:flex;align-items:center;gap:5px;font-size:9px;color:#55556a;}
+.ileg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;border:1px solid rgba(255,255,255,0.10);}
+</style>
+
+<div id="imaging-bar">
+  <div id="imaging-labels">
+    <span id="lbl-xray">X-Ray</span>
+    <span id="lbl-ct" class="active">CT</span>
+    <span id="lbl-mri">MRI</span>
+  </div>
+  <input type="range" id="imaging-slider" min="0" max="100" value="50" step="1">
+  <div id="imaging-mode-name">CT — Hounsfield window</div>
+  <div id="imaging-legend"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════════
+// HELPER: same name resolution as GLB loader
+// ═══════════════════════════════════════════════════════════════════
+function getObjName(obj) {
+  const own = obj.name || '';
+  const par = (obj.parent && obj.parent.name) || '';
+  const gpar= (obj.parent && obj.parent.parent && obj.parent.parent.name) || '';
+  if (/^mesh\./.test(own) || own === '') return par || gpar || own;
+  return own;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CLASSIFICATION SETS (exact GLB node names)
+// ═══════════════════════════════════════════════════════════════════
+const BONES = new Set([
+  'Calcaneus.r','Coccyx','Cuboid bone.r',
+  'Distal phalanx of fifth finger of foot.r','Distal phalanx of first finger of foot.r',
+  'Distal phalanx of fourth finger of foot.r','Distal phalanx of second finger of foot.r',
+  'Distal phalanx of third finger of foot.r','Femur.r','Fibula.r',
+  'Fifth metatarsal bone.r','First metatarsal bone.r','Fourth metatarsal bone.r',
+  'Hip bone.r','Intermediate cuneiform bone.r','Lateral cuneiform bone.r',
+  'Medial cuneiform bone.r','Lumbar vertebra (L1)','Lumbar vertebra (L2)',
+  'Lumbar vertebra (L3)','Lumbar vertebra (L4)','Lumbar vertebra (L5)',
+  'Middle phalanx of fifth finger of foot.r','Middle phalanx of fourth finger of foot.r',
+  'Middle phalanx of second finger of foot.r','Middle phalanx of third finger of foot.r',
+  'Navicular bone.r','Patella.r',
+  'Proximal phalanx of fifth finger of foot.r','Proximal phalanx of first finger of foot.r',
+  'Proximal phalanx of fourth finger of foot.r','Proximal phalanx of second finger of foot.r',
+  'Proximal phalanx of third finger of foot.r',
+  'Sacrum','Second metatarsal bone.r','Sesamoid bones of foot.r',
+  'Talus.r','Third metatarsal bone.r','Thoracic vertebra (T12)','Tibia.r',
+]);
+
+const CARTILAGES = new Set([
+  'Acetabular labrum.r','Annulus fibrosus L1 L2','Annulus fibrosus L2 L3',
+  'Annulus fibrosus L3 L4','Annulus fibrosus L4 L5','Annulus fibrosus L5 S1',
+  'Annulus fibrosus T12 L1','Art cart of calcaneus.r ','Art cart of cuboid bone.r',
+  'Art cart of femur distal end.r','Art cart of femur head.r',
+  'Art cart of fibula proximal tibiofibular joint.r',
+  'Art cart of fibula talofibular joint.r','Art cart of hip bone pubis.r ',
+  'Art cart of intermediate cuneiform bone.r','Art cart of lateral cuneiform bone.r',
+  'Art cart of medial cuneiform bone.r ','Art cart of navicular bone.r',
+  'Art cart of patella.r','Art cart of sacrococcygeal joint on coccyx',
+  'Art cart of sacrococcygeal joint on sacrum','Art cart of sacroiliac joint on hip bone',
+  'Art cart of sacroiliac joint on sacrum','Art cart of Sesamoid bones.r',
+  'Art cart of talus.r \u200b','Art cart of tibia distal end.r\t',
+  'Art cart of tibia proximal end.r','Art cart of tibia proximal tibiofibular joint.r\u200b',
+  'Art carts of distal phalanges of foot.r','Art carts of metatarsal bones.r',
+  'Art carts of middle phalanges of foot.r','Art carts of proximal phalanges of foot.r',
+  'Lateral meniscus.r','Medial meniscus.r','Symphysis of sacrococcygeal joint',
+  'Synovial membranes of knee.r',
+]);
+
+const TENDONS = new Set([
+  'Calcaneal tendon.r','Common tendon of biceps femoris.r',
+  'Common tendon of Semitendinosus and Long head of biceps femoris',
+  'Extensor digitorum longus tendons.r','Pes anserinus common tendon.r',
+  'Quadriceps common tendon and patellar ligament.r',
+  'Quadriceps common tendon and patellar ligament',
+  'Semimembranosus muscle tendon.r',
+]);
+
+const FASCIAS = new Set([
+  'Anterior intermuscular septum of leg.r','Crural fascia.r','Fascia lata.r',
+  'Flexor retinaculum of ankle.r','Gluteal aponeurosis.r','Iliotibial tract.r',
+  'Inferior extensor retinaculum.r','Inferior fibular retinaculum.r',
+  'Lateral femoral intermuscular septum.r','Medial femoral intermuscular septum.r',
+  'Posterior intermuscular septum of leg.r','Superior extensor retinaculum of ankle.r',
+  'Superior fibular retinaculum.r','Transverse intermuscular septum of leg.r',
+  'Plantar aponeurosis.r',
+]);
+
+const FAT = new Set(['Infrapatellar fat pad.r']);
+
+// Full ligament + tendon lists from the GLB (so they render in CT/MRI, not invisible)
+const LIGAMENTS = new Set(["Annular ligaments of 1st toe A1-A5.r", "Annular ligaments of 2nd toe A1-A5.r", "Annular ligaments of 3rd toe A1-A5.r", "Annular ligaments of 4th toe A1-A5.r", "Annular ligaments of 5th toe A1-A5.r", "Anterior cruciate ligament.r", "Anterior ligament of fibular head.r", "Anterior pubic ligament", "Anterior sacro-iliac ligament.r", "Anterior talocalcaneal ligament.r", "Anterior talofibular ligament.r", "Anterior tibiofibular ligament.r", "Anterior tibiotalar ligament (Tibiospring lig.).r", "Arcuate ligament.r", "Articular capsule of knee joint.r", "Articular capsules of distal interphalangeal joints", "Articular capsules of metatarsophalangeal joints.r", "Articular capsules of proximal interphalangeal.r", "Bifurcatum ligament", "Calcaneocuboid ligament.r", "Calcaneofibular ligament.r", "Calcaneonavicular ligament.r", "Capsule of talocrural joint.r", "Cervical ligament (anterior talocalcaneal ligament).r", "Collateral ligament of proximal interphalangeal joints.r", "Collateral ligaments of distal interphalangeal joints.r", "Collateral ligaments of metatarsophalangeal joints.r", "Cruciform ligaments or 1st toe.r", "Cruciform ligaments or 2nd toe.r", "Cruciform ligaments or 3rd toe.r", "Cruciform ligaments or 4th toe.r", "Cruciform ligaments or 5th toe.r", "Cuneometatarsal interosseus ligaments.r", "Deep transverse metatarsal ligament.r", "Descending part of Iliofemoral ligament.r", "Dorsal calcaneocuboid ligament.r", "Dorsal cuboidonavicular ligament.r", "Dorsal cuneocuboid ligament.r", "Dorsal cuneonavicular ligaments.r", "Dorsal intercuneiform ligaments.r", "Dorsal metatarsal ligaments.r", "Dorsal tarsometatarsal ligaments.r", "Fascia lata.r", "Fibular collateral ligament.r", "Flexor retinaculum of ankle.r", "Gluteal aponeurosis.r", "Hip joint capsule.r", "Iliolumbar ligament .r", "Inferior extensor retinaculum.r", "Inferior fibular retinaculum.r", "Intercornual ligament.r", "Intercuneiform interosseus ligaments.r", "Interossea / Posterior sacro-iliac ligament.r", "Interosseus talocalcaneal ligament.r", "Intersesamoid ligament.r", "Ishciofemoral ligament.r", "Lateral patellar retinaculum (horizontal part).r", "Lateral patellar retinaculum (vertical part).r", "Ligament of head of femur.r", "Ligaments of fibular head.r", "Long plantar ligament.r", "Medial collatertal ligament.r", "Medial patellar retinaculum (horizontal part).r", "Medial patellar retinaculum (vertical part).r", "Medial talocalcaneal ligament.r", "Metatarsal interosseous ligaments.r", "Oblique popliteal ligament.r", "Obturator membrane.r", "Palmar ligament of proximal interphalangeal joints.r", "Palmar ligaments of distal interphalangeal joints.r", "Palmar ligaments of metatarsophalangeal joints.r", "Plantar aponeurosis.r", "Plantar calcaneocuboid ligament.r", "Plantar calcaneonavicular ligament.r", "Plantar cuboideonavicular ligament.r", "Plantar cuneocuboid ligament.r", "Plantar cuneonavicular ligaments.r", "Plantar intercuneiform ligaments.r", "Plantar metatarsal ligaments.r", "Plantar tarsometatarsal ligaments.r", "Posterior cruciate ligament.r", "Posterior ligament of fibular head.r", "Posterior meniscofemoral ligament.r", "Posterior pubic ligament", "Posterior talocalcaneal ligament.r", "Posterior talofibular ligament.r", "Posterior tibiofibular ligament.r", "Posterior tibiotalar ligament.r", "Pubofemoral ligament.r", "Quadriceps common tendon and patellar ligament", "Quadriceps common tendon and patellar ligament.r", "Sacrospinous ligament.r", "Sacrotuberal ligament.r", "Sup, Inf, Ant, Post, Pubic ligaments", "Superficial transverse metatarsal ligament.r", "Superior extensor retinaculum of ankle.r", "Superior fibular retinaculum.r", "Talonavicular ligament.r", "Tibiocalcaneal ligament.r", "Tibionavicular ligament.r", "Transverse acetabular ligament.r", "Transverse ligament of knee.r", "Transverse part of Iliofemoral ligament.r", "Transverse tibiofibular ligament.r"]);
+const TENDONS_FULL = new Set(["Calcaneal tendon.r", "Common tendon of Semitendinosus and Long head of biceps femoris", "Common tendon of biceps femoris.r", "Common tendon sheath of fibularis muscles.r", "Extensor digitorum longus tendons.r", "Extensor hallucis longus tendon sheath.r", "Flexor digitorum longus tendon sheath.r", "Flexor hallucis longus tendon sheath.r", "Pes anserinus common tendon.r", "Quadriceps common tendon and patellar ligament", "Quadriceps common tendon and patellar ligament.r", "Semimembranosus bursa deep to tendon.r", "Semimembranosus muscle tendon.r", "Tibialis anterior tendon sheath.r", "Tibialis posterior tendon sheath.r"]);
+
+const ARTERIES = new Set([
+  '1th to 4th perforating branches of the deep femoral artery.r',
+  'Anterior lateral malleolar artery.r','Anterior medial malleolar artery.r',
+  'Anterior tibial artery.r','Anterior tibial recurrent artery.r','Arcuate artery.r',
+  'Ascending branch of lateral circumflex femoral artery.r',
+  'Communicating br.of Posterior tibial a. and Femoral a..r',
+  'Deep artery of the thigh.r','Deep branch of Medial plantar artery.r',
+  'Deep plantar arch.r','Deep plantar artery.r',
+  'Descending branch of lateral circumflex femoral artery.r',
+  'Descending genicular artery.r','Dorsal digital arteries of foot.r',
+  'Dorsal metatarsal arteries.r','Dorsal pedis artery.r','Femoral artery.r',
+  'Femoral neck vessels.r','Fibular artery.r',
+  'Inferior lateral genicular artery.r','Inferior medial genicular artery.r',
+  'Lateral calcaneal branch of fibular artery.r','Lateral circumflex femoral artery.r',
+  'Lateral malleolar branches of Fibular artery.r','Lateral plantar artery.r',
+  'Lateral tarsal artery.r','Medial calcaneal artery.r',
+  'Medial circumflex femoral artery.r',
+  'Medial malleolar artery of Posterior tibial artery.r',
+  'Medial plantar artery.r','Medial tarsal arteries.r','Middle genicular artery.r',
+  'Perforating br. between Arcuate a. and Deep plantar arch.r',
+  'Perforating branches of fibular artery.r','Plantar metatarsal arteries.r',
+  'Popliteal artery.r','Posterior tibial artery.r','Posterior tibial recurrent artery.r',
+  'Superficial branch of Medial planter artery.r',
+  'Superficial circumflex iliac artery.r','Superficial epigastric artery.r',
+  'Superficial external pudendal artery.r',
+  'Superior lateral genicular artery.r','Superior medial genicular artery.r','Sural artery.r',
+]);
+
+const VEINS = new Set([
+  '1th to 4th perforating branches of the deep femoral vein.r',
+  'Accessory saphenous vein.r',
+  'Accompanying veins of arcuate and dorsal arteries.r',
+  'Accompanying veins of dorsal digital metatarsal arteries.r',
+  'Anterior femoral cutaneous vein.r','Anterior tibial vein.r','Deep femoral vein.r',
+  'Dorsal digital vein of medial side of great toe.r','Dorsal digital veins.r',
+  'Dorsal metatarsal veins.r','Dorsal venous arch of foot.r',
+  'Dorsal venous network of foot.r','Femoral vein.r','Fibular vein.r',
+  'Great saphenous vein.r',
+  'Inferior lateral genicular vein.r','Inferior medial genicular vein.r',
+  'Intercapitular veins of foot.r','Lateral circumflex femoral vein.r',
+  'Lateral marginal vein.r','Lateral plantar vein.r',
+  'Medial circumflex femoral vein.r','Medial marginal vein.r','Medial plantar vein.r',
+  'Middle genicular vein.r',
+  "Perforating branches (Boyd's veins).r",
+  "Perforating branches (Cockett's veins).r",
+  "Perforating branches (Dodd's veins).r",
+  'Plantar digital veins.r','Plantar metatarsal veins.r','Plantar venous arch.r',
+  'Popliteal vein.r','Posterior arch veins.r','Posterior tibial vein.r',
+  'Small saphenous vein.r','Superficial circumflex iliac vein.r',
+  'Superficial epigastric vein.r','Superficial external pudendal vein.r',
+  'Superior lateral genicular vein.r','Superior medial genicular vein.r','Sural vein.r',
+  'Tributary veins of Great and small saphenous veins.r',
+]);
+
+// ── MUSCLES: name → {compartment, origin, insertion} ──
+const MUSCLES = {
+  // ANTERIOR THIGH
+  'Rectus femoris.r':           {comp:'thigh_ant', mriCol:0xd96030, origin:'Hip bone.r (AIIS)',         insertion:'Patella.r → tibial tuberosity'},
+  'Vastus lateralis muscle.r':  {comp:'thigh_ant', mriCol:0xd96030, origin:'Femur.r (greater trochanter)',insertion:'Patella.r → tibial tuberosity'},
+  'Vastus medialis muscle.r':   {comp:'thigh_ant', mriCol:0xd96030, origin:'Femur.r (linea aspera)',     insertion:'Patella.r → tibial tuberosity'},
+  'Vastus intermedius muscle.r':{comp:'thigh_ant', mriCol:0xd96030, origin:'Femur.r (anterior shaft)',   insertion:'Patella.r → tibial tuberosity'},
+  'Articularis genus.r':        {comp:'thigh_ant', mriCol:0xd96030, origin:'Femur.r (anterior distal)',  insertion:'Synovial membrane of knee'},
+  'Sartorius muscle.r':         {comp:'thigh_ant', mriCol:0xd96030, origin:'Hip bone.r (ASIS)',          insertion:'Tibia.r (pes anserinus)'},
+  'Iliacus muscle.r':           {comp:'thigh_ant', mriCol:0xd96030, origin:'Hip bone.r (iliac fossa)',   insertion:'Femur.r (lesser trochanter)'},
+  'Psoas major.r':              {comp:'thigh_ant', mriCol:0xd96030, origin:'L1–L5 vertebrae + discs',    insertion:'Femur.r (lesser trochanter)'},
+  'Psoas minor.r':              {comp:'thigh_ant', mriCol:0xd96030, origin:'T12–L1 vertebrae',           insertion:'Hip bone.r (pectineal line)'},
+  // POSTERIOR THIGH
+  'Long head of biceps femoris.r':  {comp:'thigh_post', mriCol:0xb84060, origin:'Hip bone.r (ischial tuberosity)', insertion:'Fibula.r (head)'},
+  'Short head of biceps femoris.r': {comp:'thigh_post', mriCol:0xb84060, origin:'Femur.r (linea aspera)',           insertion:'Fibula.r (head)'},
+  'Semitendinosus muscle.r':        {comp:'thigh_post', mriCol:0xb84060, origin:'Hip bone.r (ischial tuberosity)', insertion:'Tibia.r (pes anserinus)'},
+  'Semimembranosus muscle.r':       {comp:'thigh_post', mriCol:0xb84060, origin:'Hip bone.r (ischial tuberosity)', insertion:'Tibia.r (medial condyle)'},
+  // MEDIAL THIGH
+  'Adductor longus.r':  {comp:'thigh_med', mriCol:0xc03870, origin:'Hip bone.r (pubic body)',      insertion:'Femur.r (linea aspera)'},
+  'Adductor brevis.r':  {comp:'thigh_med', mriCol:0xc03870, origin:'Hip bone.r (inferior pubic ramus)', insertion:'Femur.r (pectineal line)'},
+  'Adductor magnus.r':  {comp:'thigh_med', mriCol:0xc03870, origin:'Hip bone.r (ischiopubic ramus)',    insertion:'Femur.r (linea aspera + adductor tubercle)'},
+  'Gracilis muscle.r':  {comp:'thigh_med', mriCol:0xc03870, origin:'Hip bone.r (pubic symphysis)',      insertion:'Tibia.r (pes anserinus)'},
+  'Pectineus muscle.r': {comp:'thigh_med', mriCol:0xc03870, origin:'Hip bone.r (pectineal line)',       insertion:'Femur.r (pectineal line)'},
+  // GLUTEAL
+  'Gluteus maximus muscle.r':  {comp:'gluteal', mriCol:0xa03050, origin:'Sacrum + Hip bone.r (ilium)',  insertion:'Femur.r (gluteal tuberosity) + Iliotibial tract'},
+  'Gluteus medius muscle.r':   {comp:'gluteal', mriCol:0xa03050, origin:'Hip bone.r (ilium)',            insertion:'Femur.r (greater trochanter)'},
+  'Gluteus minimus muscle.r':  {comp:'gluteal', mriCol:0xa03050, origin:'Hip bone.r (ilium)',            insertion:'Femur.r (greater trochanter)'},
+  'Tensor fasciae latae.r':    {comp:'gluteal', mriCol:0xa03050, origin:'Hip bone.r (ASIS)',             insertion:'Tibia.r (Gerdy tubercle via IT band)'},
+  'Piriformis muscle.r':       {comp:'gluteal', mriCol:0xa03050, origin:'Sacrum',                        insertion:'Femur.r (greater trochanter)'},
+  'Obturator externus.r':      {comp:'gluteal', mriCol:0xa03050, origin:'Hip bone.r (obturator foramen)',insertion:'Femur.r (trochanteric fossa)'},
+  'Obturator internus.r':      {comp:'gluteal', mriCol:0xa03050, origin:'Hip bone.r (obturator membrane)',insertion:'Femur.r (greater trochanter)'},
+  'Superior gemellus muscle.r':{comp:'gluteal', mriCol:0xa03050, origin:'Hip bone.r (ischial spine)',    insertion:'Femur.r (greater trochanter)'},
+  'Inferior gemellus muscle.r':{comp:'gluteal', mriCol:0xa03050, origin:'Hip bone.r (ischial tuberosity)',insertion:'Femur.r (greater trochanter)'},
+  'Quadratus femoris muscle.r':{comp:'gluteal', mriCol:0xa03050, origin:'Hip bone.r (ischial tuberosity)',insertion:'Femur.r (intertrochanteric crest)'},
+  // ANTERIOR LEG
+  'Tibialis anterior muscle.r':  {comp:'leg_ant', mriCol:0xd94040, origin:'Tibia.r (lat condyle + shaft)', insertion:'Medial cuneiform bone.r + First metatarsal bone.r'},
+  'Extensor digitorum longus.r':  {comp:'leg_ant', mriCol:0xd94040, origin:'Tibia.r + Fibula.r',             insertion:'Toes 2–5 (dorsal expansion)'},
+  'Extensor hallucis longus.r':   {comp:'leg_ant', mriCol:0xd94040, origin:'Fibula.r (mid shaft)',            insertion:'Distal phalanx of first finger of foot.r'},
+  'Fibularis tertius muscle.r':   {comp:'leg_ant', mriCol:0xd94040, origin:'Fibula.r (distal)',               insertion:'Fifth metatarsal bone.r'},
+  // LATERAL LEG
+  'Fibularis longus muscle.r':  {comp:'leg_lat', mriCol:0xc05080, origin:'Fibula.r (head + upper lat)',   insertion:'Medial cuneiform bone.r + First metatarsal bone.r'},
+  'Fibularis brevis muscle.r':  {comp:'leg_lat', mriCol:0xc05080, origin:'Fibula.r (lower lat shaft)',    insertion:'Fifth metatarsal bone.r'},
+  // SUPERFICIAL POSTERIOR LEG
+  'Lateral head of gastrocnemius.r': {comp:'leg_post_sup', mriCol:0xe06080, origin:'Femur.r (lateral condyle)',  insertion:'Calcaneus.r (calcaneal tendon)'},
+  'Medial head of gastrocnemius.r':  {comp:'leg_post_sup', mriCol:0xe06080, origin:'Femur.r (medial condyle)',   insertion:'Calcaneus.r (calcaneal tendon)'},
+  'Soleus muscle.r':                 {comp:'leg_post_sup', mriCol:0xe06080, origin:'Tibia.r + Fibula.r (soleal line)',insertion:'Calcaneus.r (calcaneal tendon)'},
+  'Plantaris muscle.r':              {comp:'leg_post_sup', mriCol:0xe06080, origin:'Femur.r (lat supracondylar)',  insertion:'Calcaneus.r'},
+  // DEEP POSTERIOR LEG
+  'Tibialis posterior muscle.r': {comp:'leg_post_deep', mriCol:0xe07060, origin:'Tibia.r + Fibula.r (post surface)', insertion:'Navicular bone.r + cuneiforms + metatarsals'},
+  'Flexor digitorum longus.r':   {comp:'leg_post_deep', mriCol:0xe07060, origin:'Tibia.r (posterior)',               insertion:'Distal phalanges toes 2–5'},
+  'Flexor hallucis longus.r':    {comp:'leg_post_deep', mriCol:0xe07060, origin:'Fibula.r (posterior)',               insertion:'Distal phalanx of first finger of foot.r'},
+  'Popliteus muscle.r':          {comp:'leg_post_deep', mriCol:0xe07060, origin:'Femur.r (lat condyle)',              insertion:'Tibia.r (posterior proximal)'},
+  // FOOT
+  '1st Dorsal interossei muscles of foot.r': {comp:'foot', mriCol:0xcc4848, origin:'Metatarsals 1–2', insertion:'Proximal phalanx toe 2'},
+  '2nd Dorsal interossei muscles of foot.r': {comp:'foot', mriCol:0xcc4848, origin:'Metatarsals 2–3', insertion:'Proximal phalanx toe 2'},
+  '3rd Dorsal interossei muscles of foot.r': {comp:'foot', mriCol:0xcc4848, origin:'Metatarsals 3–4', insertion:'Proximal phalanx toe 3'},
+  '4th Dorsal interossei muscles of foot.r': {comp:'foot', mriCol:0xcc4848, origin:'Metatarsals 4–5', insertion:'Proximal phalanx toe 4'},
+  'Abductor digiti minimi of foot.r':         {comp:'foot', mriCol:0xcc4848, origin:'Calcaneus.r',    insertion:'Proximal phalanx toe 5'},
+  'Abductor hallucis.r':                      {comp:'foot', mriCol:0xcc4848, origin:'Calcaneus.r',    insertion:'Proximal phalanx of first finger of foot.r'},
+  'Extensor digitorum brevis.r':              {comp:'foot', mriCol:0xcc4848, origin:'Calcaneus.r',    insertion:'Toes 1–4'},
+  'Extensor hallucis brevis.r':               {comp:'foot', mriCol:0xcc4848, origin:'Calcaneus.r',    insertion:'Distal phalanx of first finger of foot.r'},
+  'Flexor digiti minimi brevis of foot.r':    {comp:'foot', mriCol:0xcc4848, origin:'Fifth metatarsal bone.r', insertion:'Proximal phalanx toe 5'},
+  'Flexor digitorum brevis.r':                {comp:'foot', mriCol:0xcc4848, origin:'Calcaneus.r',    insertion:'Middle phalanges toes 2–5'},
+  'Lateral head of flexor hallucis brevis.r': {comp:'foot', mriCol:0xcc4848, origin:'Cuboid bone.r + Lateral cuneiform bone.r', insertion:'Proximal phalanx of first finger of foot.r'},
+  'Medial head of flexor hallucis brevis.r':  {comp:'foot', mriCol:0xcc4848, origin:'Medial cuneiform bone.r', insertion:'Proximal phalanx of first finger of foot.r'},
+  'Lumbrical muscles of foot.r':              {comp:'foot', mriCol:0xcc4848, origin:'Flexor digitorum longus tendons', insertion:'Dorsal expansion toes 2–5'},
+  'Oblique head of adductor hallucis.r':      {comp:'foot', mriCol:0xcc4848, origin:'Metatarsals 2–4',  insertion:'Proximal phalanx of first finger of foot.r'},
+  'Opponens digiti minimi muscle of foot.r':  {comp:'foot', mriCol:0xcc4848, origin:'Fifth metatarsal bone.r', insertion:'Fifth metatarsal bone.r'},
+  'Plantar interossei muscles.r':             {comp:'foot', mriCol:0xcc4848, origin:'Metatarsals 3–5', insertion:'Proximal phalanges toes 3–5'},
+  'Quadratus plantae muscle.r':               {comp:'foot', mriCol:0xcc4848, origin:'Calcaneus.r',     insertion:'Flexor digitorum longus tendon'},
+  'Transverse head of adductor hallucis.r':   {comp:'foot', mriCol:0xcc4848, origin:'Plantar ligaments MTP joints 3–5', insertion:'Proximal phalanx of first finger of foot.r'},
+  // PELVIC
+  'Coccygeus muscle.r': {comp:'pelvic', mriCol:0x904060, origin:'Hip bone.r (ischial spine)', insertion:'Sacrum + Coccyx'},
+};
+
+// ── VESSEL SIDEBAR GROUPS ──
+const VESSEL_GROUPS = [
+  {label:'MAIN ARTERIES', type:'artery', meshes:[
+    'Femoral artery.r','Deep artery of the thigh.r','Popliteal artery.r',
+    'Anterior tibial artery.r','Posterior tibial artery.r','Fibular artery.r',
+  ]},
+  {label:'THIGH ARTERIES', type:'artery', meshes:[
+    'Lateral circumflex femoral artery.r','Medial circumflex femoral artery.r',
+    'Ascending branch of lateral circumflex femoral artery.r',
+    'Descending branch of lateral circumflex femoral artery.r',
+    '1th to 4th perforating branches of the deep femoral artery.r',
+    'Descending genicular artery.r','Femoral neck vessels.r',
+    'Superficial circumflex iliac artery.r','Superficial epigastric artery.r',
+    'Superficial external pudendal artery.r',
+  ]},
+  {label:'KNEE ARTERIES', type:'artery', meshes:[
+    'Superior lateral genicular artery.r','Superior medial genicular artery.r',
+    'Middle genicular artery.r','Inferior lateral genicular artery.r',
+    'Inferior medial genicular artery.r','Anterior tibial recurrent artery.r',
+    'Posterior tibial recurrent artery.r','Sural artery.r',
+  ]},
+  {label:'LEG & FOOT ARTERIES', type:'artery', meshes:[
+    'Anterior lateral malleolar artery.r','Anterior medial malleolar artery.r',
+    'Lateral malleolar branches of Fibular artery.r',
+    'Lateral calcaneal branch of fibular artery.r','Medial calcaneal artery.r',
+    'Medial malleolar artery of Posterior tibial artery.r',
+    'Perforating branches of fibular artery.r',
+    'Communicating br.of Posterior tibial a. and Femoral a..r',
+    'Dorsal pedis artery.r','Lateral tarsal artery.r','Medial tarsal arteries.r',
+    'Arcuate artery.r','Dorsal metatarsal arteries.r','Dorsal digital arteries of foot.r',
+    'Medial plantar artery.r','Lateral plantar artery.r',
+    'Deep branch of Medial plantar artery.r',
+    'Superficial branch of Medial planter artery.r',
+    'Deep plantar arch.r','Deep plantar artery.r',
+    'Perforating br. between Arcuate a. and Deep plantar arch.r',
+    'Plantar metatarsal arteries.r',
+  ]},
+  {label:'DEEP VEINS', type:'vein', meshes:[
+    'Femoral vein.r','Deep femoral vein.r','Popliteal vein.r',
+    'Anterior tibial vein.r','Posterior tibial vein.r','Fibular vein.r',
+    'Lateral circumflex femoral vein.r','Medial circumflex femoral vein.r',
+    '1th to 4th perforating branches of the deep femoral vein.r',
+  ]},
+  {label:'SUPERFICIAL VEINS', type:'vein', meshes:[
+    'Great saphenous vein.r','Small saphenous vein.r','Accessory saphenous vein.r',
+    'Anterior femoral cutaneous vein.r',
+    'Superficial circumflex iliac vein.r','Superficial epigastric vein.r',
+    'Superficial external pudendal vein.r',
+    "Perforating branches (Boyd's veins).r",
+    "Perforating branches (Cockett's veins).r",
+    "Perforating branches (Dodd's veins).r",
+    'Posterior arch veins.r','Tributary veins of Great and small saphenous veins.r',
+  ]},
+  {label:'KNEE & LEG VEINS', type:'vein', meshes:[
+    'Superior lateral genicular vein.r','Superior medial genicular vein.r',
+    'Middle genicular vein.r','Inferior lateral genicular vein.r',
+    'Inferior medial genicular vein.r','Sural vein.r',
+  ]},
+  {label:'FOOT VEINS', type:'vein', meshes:[
+    'Dorsal venous arch of foot.r','Dorsal venous network of foot.r',
+    'Lateral marginal vein.r','Medial marginal vein.r',
+    'Dorsal metatarsal veins.r','Dorsal digital veins.r',
+    'Dorsal digital vein of medial side of great toe.r',
+    'Accompanying veins of arcuate and dorsal arteries.r',
+    'Accompanying veins of dorsal digital metatarsal arteries.r',
+    'Intercapitular veins of foot.r',
+    'Medial plantar vein.r','Lateral plantar vein.r','Plantar venous arch.r',
+    'Plantar metatarsal veins.r','Plantar digital veins.r',
+  ]},
+];
+
+// ── MUSCLE SIDEBAR GROUPS ──
+const MUSCLE_GROUPS = [
+  {label:'ANTERIOR THIGH',   comps:['thigh_ant']},
+  {label:'POSTERIOR THIGH',  comps:['thigh_post']},
+  {label:'MEDIAL THIGH',     comps:['thigh_med']},
+  {label:'GLUTEAL',          comps:['gluteal']},
+  {label:'ANTERIOR LEG',     comps:['leg_ant']},
+  {label:'LATERAL LEG',      comps:['leg_lat']},
+  {label:'POSTERIOR LEG',    comps:['leg_post_sup','leg_post_deep']},
+  {label:'FOOT INTRINSICS',  comps:['foot']},
+  {label:'PELVIC',           comps:['pelvic']},
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// NORMALIZE all GLB names to match meshMap keys (THREE sanitizes names
+// the same way toThreeName does: spaces→_, dots removed). meshMap is
+// keyed by these sanitized names, so our Sets must be too.
+// ═══════════════════════════════════════════════════════════════════
+function norm(s){
+  // Exactly mirror THREE.PropertyBinding.sanitizeNodeName:
+  // whitespace -> '_', then strip reserved chars [ ] . : /
+  return String(s).replace(/\s/g, '_').replace(/[\[\]\.:\/]/g, '');
+}
+// Reverse lookup: normalized name -> original raw name (for sidebar data attributes)
+const _denormVessel = {};
+// (populated after VESSEL_GROUPS defined below if needed)
+function denorm(n, kind){
+  if (kind==='vessel' && _denormVessel[n]) return _denormVessel[n];
+  return n;
+}
+
+// Rebuild Sets with normalized keys, keeping a map back to display name
+const BONES_N    = new Set([...BONES].map(norm));
+const CARTS_N    = new Set([...CARTILAGES].map(norm));
+const TENDONS_N  = new Set([...TENDONS, ...TENDONS_FULL].map(norm));
+const FASCIAS_N  = new Set([...FASCIAS].map(norm));
+const FAT_N      = new Set([...FAT].map(norm));
+const LIGAMENTS_N = new Set([...LIGAMENTS].map(norm));
+const ARTERIES_N = new Set([...ARTERIES].map(norm));
+const VEINS_N    = new Set([...VEINS].map(norm));
+
+// Muscles: normalized-key → info (with displayName added)
+const MUSCLES_N = {};
+for (const [k,v] of Object.entries(MUSCLES)) {
+  MUSCLES_N[norm(k)] = Object.assign({ displayName:k }, v);
+}
+
+// Helper: get the normalized name for any mesh object
+function normName(obj){ return norm(getObjName(obj)); }
+
+// ═══════════════════════════════════════════════════════════════════
+// BUILD SIDEBAR TABS
+// ═══════════════════════════════════════════════════════════════════
+const sidebarEl   = document.getElementById('sidebar');
+const nerveTreeEl = document.getElementById('nerve-tree');
+
+// Tab row
+const tabRow = document.createElement('div');
+tabRow.className = 'sidebar-tab-row';
+tabRow.innerHTML = `
+  <div class="sidebar-tab active" id="tab-nerves"      onclick="showTab('nerves')">Nervous</div>
+  <div class="sidebar-tab"        id="tab-vessels"     onclick="showTab('vessels')">Vessels</div>
+  <div class="sidebar-tab"        id="tab-muscles"     onclick="showTab('muscles')">Muscles</div>
+  <div class="sidebar-tab"        id="tab-pathologies" onclick="showTab('pathologies')">Pathology</div>
+`;
+sidebarEl.insertBefore(tabRow, nerveTreeEl);
+
+// Vessel panel
+const vesselPanel = document.createElement('div');
+vesselPanel.id = 'vessel-panel';
+vesselPanel.className = 'side-panel';
+sidebarEl.appendChild(vesselPanel);
+
+// Muscle panel
+const musclePanel = document.createElement('div');
+musclePanel.id = 'muscle-panel';
+musclePanel.className = 'side-panel';
+sidebarEl.appendChild(musclePanel);
+
+// Pathology panel
+const pathPanel = document.createElement('div');
+pathPanel.id = 'pathology-panel';
+pathPanel.className = 'side-panel';
+sidebarEl.appendChild(pathPanel);
+
+window.showTab = function(tab) {
+  ['nerves','vessels','muscles','pathologies'].forEach(t => {
+    const el = document.getElementById('tab-'+t);
+    if (el) el.classList.toggle('active', t===tab);
+  });
+  nerveTreeEl.classList.toggle('hidden', tab!=='nerves');
+  vesselPanel.classList.toggle('visible', tab==='vessels');
+  musclePanel.classList.toggle('visible', tab==='muscles');
+  pathPanel.classList.toggle('visible', tab==='pathologies');
+};
+
+// Populate vessel denormalization map
+VESSEL_GROUPS.forEach(g => g.meshes.forEach(m => { _denormVessel[norm(m)] = m; }));
+
+// Build vessel sidebar
+function buildVesselPanel() {
+  let html = '';
+  VESSEL_GROUPS.forEach(g => {
+    html += `<div class="plexus-group"><div class="plexus-label">${g.label}</div>`;
+    g.meshes.forEach(m => {
+      const d = m.replace(/\.r$/,'');
+      html += `<div class="vessel-item ${g.type}" data-mesh="${m}" title="${d}">${d}</div>`;
+    });
+    html += '</div>';
+  });
+  vesselPanel.innerHTML = html;
+  vesselPanel.querySelectorAll('.vessel-item').forEach(el => {
+    el.addEventListener('click', ev => selectVessel(el.dataset.mesh, ev.ctrlKey||ev.metaKey));
+  });
+}
+
+// Build muscle sidebar
+function buildMusclePanel() {
+  let html = '';
+  MUSCLE_GROUPS.forEach(g => {
+    const names = Object.entries(MUSCLES).filter(([,v])=>g.comps.includes(v.comp)).map(([k])=>k);
+    if (!names.length) return;
+    html += `<div class="plexus-group"><div class="plexus-label">${g.label}</div>`;
+    names.forEach(name => {
+      const d = name.replace(/\.r$/,'').replace(' muscle','');
+      html += `<div class="muscle-item" data-muscle="${name}" title="${MUSCLES[name].origin} → ${MUSCLES[name].insertion}">${d}</div>`;
+    });
+    html += '</div>';
+  });
+  musclePanel.innerHTML = html;
+  musclePanel.querySelectorAll('.muscle-item').forEach(el => {
+    el.addEventListener('click', ev => selectMuscle(el.dataset.muscle, ev.ctrlKey||ev.metaKey));
+  });
+}
+
+buildVesselPanel();
+buildMusclePanel();
+
+// ═══════════════════════════════════════════════════════════════════
+// SELECTION STATE
+// ═══════════════════════════════════════════════════════════════════
+let selectedVessels = new Set();
+let selectedMuscles = new Set();
+let flashTimers = [];
+
+function setObjMat(name, mat) {
+  const list = (window.meshMapAll && window.meshMapAll[name]) || (meshMap[name] ? [meshMap[name]] : []);
+  for (const m of list) {
+    if (Array.isArray(m.material)) m.material = m.material.map(()=>mat.clone());
+    else m.material = mat.clone();
+  }
+}
+
+// ── VESSEL SELECTION ──
+function resetVessels(dimmed) {
+  ARTERIES_N.forEach(n => setObjMat(n, new THREE.MeshBasicMaterial({
+    color: dimmed ? 0x220400 : 0xcc3322, transparent:true,
+    opacity: dimmed ? 0.05 : 0.60,
+    depthTest:false, depthWrite:false, side:THREE.DoubleSide
+  })));
+  VEINS_N.forEach(n => setObjMat(n, new THREE.MeshBasicMaterial({
+    color: dimmed ? 0x000422 : 0x3355cc, transparent:true,
+    opacity: dimmed ? 0.05 : 0.55,
+    depthTest:false, depthWrite:false, side:THREE.DoubleSide
+  })));
+}
+
+function selectVessel(meshNameRaw, additive) {
+  const meshName = norm(meshNameRaw);
+  if (!additive) { selectedMuscles.clear(); selectedVessels.clear(); }
+  if (selectedVessels.has(meshName)) selectedVessels.delete(meshName);
+  else selectedVessels.add(meshName);
+
+  resetVessels(selectedVessels.size > 0);
+  vesselPanel.querySelectorAll('.vessel-item').forEach(el => el.classList.remove('active'));
+  selectedVessels.forEach(mn => {
+    const isArt = ARTERIES_N.has(mn);
+    setObjMat(mn, new THREE.MeshBasicMaterial({
+      color: isArt ? 0xff4444 : 0x5588ff, transparent:false,
+      depthTest:false, depthWrite:false, side:THREE.DoubleSide
+    }));
+    const el = vesselPanel.querySelector(`[data-mesh="${denorm(mn,"vessel")}"]`);
+    if (el) { el.classList.add('active'); el.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+  });
+  if (selectedVessels.size > 0) {
+    const last = [...selectedVessels].at(-1);
+    const isArt = ARTERIES_N.has(last);
+    const label = denorm(last,'vessel').replace(/\.r$/,'');
+    document.getElementById('nerve-name').textContent = label + (selectedVessels.size>1 ? ` (+${selectedVessels.size-1})` : '');
+    document.getElementById('nerve-root').textContent = isArt ? 'Artery' : 'Vein';
+    document.getElementById('nerve-territory').textContent = '';
+    document.getElementById('path-text').textContent = '';
+    document.getElementById('info-panel').style.display = 'block';
+    document.getElementById('reset-btn').style.display = 'block';
+  }
+}
+
+// ── MUSCLE SELECTION ──
+function resetMuscles(dimmed) {
+  Object.keys(MUSCLES_N).forEach(n => setObjMat(n, new THREE.MeshStandardMaterial({
+    color: dimmed ? 0x1a0808 : MUSCLES_N[n].mriCol,
+    transparent:true, opacity: dimmed ? 0.05 : 0.72,
+    roughness:0.75, metalness:0, depthWrite:false, side:THREE.DoubleSide
+  })));
+}
+
+function selectMuscle(muscleNameRaw, additive) {
+  const muscleName = norm(muscleNameRaw);
+  if (!additive) { selectedVessels.clear(); selectedMuscles.clear(); }
+  if (selectedMuscles.has(muscleName)) selectedMuscles.delete(muscleName);
+  else selectedMuscles.add(muscleName);
+
+  // dim all muscles
+  resetMuscles(selectedMuscles.size > 0);
+
+  musclePanel.querySelectorAll('.muscle-item').forEach(el => el.classList.remove('active'));
+  selectedMuscles.forEach(mn => {
+    setObjMat(mn, new THREE.MeshStandardMaterial({
+      color: 0xffd700, transparent:false,
+      roughness:0.4, metalness:0.1,
+      emissive: new THREE.Color(0xffd700), emissiveIntensity:0.3,
+      depthWrite:false, side:THREE.DoubleSide
+    }));
+    const el = musclePanel.querySelector(`[data-muscle="${MUSCLES_N[mn]?MUSCLES_N[mn].displayName:mn}"]`);
+    if (el) { el.classList.add('active'); el.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+  });
+
+  if (selectedMuscles.size > 0) {
+    const last = [...selectedMuscles].at(-1);
+    const info = MUSCLES_N[last];
+    document.getElementById('nerve-name').textContent = info.displayName.replace(/\.r$/,'').replace(' muscle','') + (selectedMuscles.size>1?` (+${selectedMuscles.size-1})`:'');
+    document.getElementById('nerve-root').textContent = info.comp.replace(/_/g,' ');
+    document.getElementById('nerve-territory').textContent = `Origin: ${info.origin}`;
+    document.getElementById('path-text').textContent = `Insertion: ${info.insertion}`;
+    document.getElementById('path-label').textContent = 'Attachment';
+    document.getElementById('info-panel').style.display = 'block';
+    document.getElementById('reset-btn').style.display = 'block';
+
+    // Flash attachment bones gold
+    flashTimers.forEach(clearTimeout); flashTimers = [];
+    const bonesToFlash = new Set();
+    selectedMuscles.forEach(mn => {
+      // find bones mentioned in origin/insertion strings
+      BONES_N.forEach(b => {
+        const bClean = b.replace(/\.r$/,'');
+        if (MUSCLES[mn].origin.includes(bClean) || MUSCLES[mn].insertion.includes(bClean) || MUSCLES[mn].origin.includes(b) || MUSCLES[mn].insertion.includes(b)) bonesToFlash.add(b);
+      });
+    });
+    bonesToFlash.forEach(b => {
+      setObjMat(norm(b), new THREE.MeshStandardMaterial({
+        color:0xffd700, transparent:false,
+        roughness:0.3, metalness:0.2,
+        emissive:new THREE.Color(0xaa8800), emissiveIntensity:0.6,
+        depthWrite:false, side:THREE.DoubleSide
+      }));
+    });
+  }
+}
+
+// Patch resetSelection to clear everything
+const _origReset = window.resetSelection;
+window.resetSelection = function() {
+  _origReset && _origReset();
+  flashTimers.forEach(clearTimeout); flashTimers = [];
+  selectedVessels.clear();
+  selectedMuscles.clear();
+  document.getElementById('path-label').textContent = 'Path';
+  // Reapply imaging mode to restore correct materials
+  const v = parseInt(document.getElementById('imaging-slider').value);
+  applyImaging(v);
+};
+
+// Canvas click: vessel and muscle raycasting
+canvas.addEventListener('mouseup', function(ev) {
+  if (!mouseDownPos) return;
+  const dx=ev.clientX-mouseDownPos.x, dy=ev.clientY-mouseDownPos.y;
+  if (Math.sqrt(dx*dx+dy*dy)>5) return;
+  const rect=canvas.getBoundingClientRect();
+  const mx=((ev.clientX-rect.left)/rect.width)*2-1;
+  const my=-((ev.clientY-rect.top)/rect.height)*2+1;
+  const rc=new THREE.Raycaster();
+  rc.setFromCamera(new THREE.Vector2(mx,my),camera);
+
+  // Try vessels first
+  const vMeshes=[...ARTERIES_N,...VEINS_N].map(n=>meshMap[n]).filter(Boolean);
+  if (vMeshes.length) {
+    const hits=rc.intersectObjects(vMeshes,true);
+    if (hits.length) {
+      const hitObj=hits[0].object;
+      const hitName=normName(hitObj);
+      if (ARTERIES_N.has(hitName)||VEINS_N.has(hitName)) {
+        selectVessel(hitName, ev.ctrlKey||ev.metaKey);
+        showTab('vessels');
+        return;
+      }
+    }
+  }
+  // Try muscles
+  const mMeshes=Object.keys(MUSCLES_N).map(n=>meshMap[n]).filter(Boolean);
+  if (mMeshes.length) {
+    const hits=rc.intersectObjects(mMeshes,true);
+    if (hits.length) {
+      const hitObj=hits[0].object;
+      const hitName=normName(hitObj);
+      if (MUSCLES_N[hitName]) {
+        selectMuscle(hitName, ev.ctrlKey||ev.metaKey);
+        showTab('muscles');
+      }
+    }
+  }
+}, true);
+
+// ═══════════════════════════════════════════════════════════════════
+// IMAGING SLIDER
+// ═══════════════════════════════════════════════════════════════════
+function huGrey(hu) {
+  const t=Math.max(0,Math.min(1,(hu+140)/400));
+  const v=Math.round(t*255);
+  return(v<<16)|(v<<8)|v;
+}
+const SL={
+  xray:{bg:0x000204,amb:0.20,sun:0.00,fill:0.08},
+  ct:  {bg:0x040406,amb:0.65,sun:1.15,fill:0.38},
+  mri: {bg:0x020202,amb:0.55,sun:0.85,fill:0.25},
+};
+const SPEC={
+  xray:{nerve:{c:0xffdd00,o:0.75},artery:{c:0xff3322,o:0.82},vein:{c:0x3355ff,o:0.78}},
+  ct:  {nerve:{c:0xeeee88,o:0.50},artery:{c:0xdd2211,o:0.70},vein:{c:0x2244cc,o:0.65}},
+  mri: {nerve:{c:0xf0e890,o:0.72},artery:{c:0xff1a1a,o:0.82},vein:{c:0x2255ff,o:0.78}},
+};
+function lC(a,b,t){const ar=(a>>16)&0xff,ag=(a>>8)&0xff,ab=a&0xff,br=(b>>16)&0xff,bg=(b>>8)&0xff,bb=b&0xff;return((Math.round(ar+(br-ar)*t))<<16)|((Math.round(ag+(bg-ag)*t))<<8)|(Math.round(ab+(bb-ab)*t));}
+function lN(a,b,t){return a+(b-a)*t;}
+
+function setMat(name, mat) {
+  const list=(window.meshMapAll&&window.meshMapAll[name])||(meshMap[name]?[meshMap[name]]:[]);
+  for(const m of list){
+    if(Array.isArray(m.material)) m.material=m.material.map(()=>mat.clone()); else m.material=mat.clone();
+  }
+}
+
+function applyImaging(val) {
+  const tXC=Math.min(1,val/50);
+  const tCM=Math.max(0,(val-50)/50);
+
+  // Lighting
+  const sX=SL.xray,sC=SL.ct,sM=SL.mri;
+  scene.background=new THREE.Color(tCM>0?lC(sC.bg,sM.bg,tCM):lC(sX.bg,sC.bg,tXC));
+  scene.traverse(o=>{
+    if(o.isAmbientLight)   o.intensity=tCM>0?lN(sC.amb,sM.amb,tCM):lN(sX.amb,sC.amb,tXC);
+    if(o.isDirectionalLight&&o.position&&o.position.x>0)  o.intensity=tCM>0?lN(sC.sun,sM.sun,tCM):lN(sX.sun,sC.sun,tXC);
+    if(o.isDirectionalLight&&o.position&&o.position.x<=0) o.intensity=tCM>0?lN(sC.fill,sM.fill,tCM):lN(sX.fill,sC.fill,tXC);
+  });
+
+  function bSpec(key){const x=SPEC.xray[key],c=SPEC.ct[key],m=SPEC.mri[key];return tCM>0?{c:lC(c.c,m.c,tCM),o:lN(c.o,m.o,tCM)}:{c:lC(x.c,c.c,tXC),o:lN(x.o,c.o,tXC)};}
+  const nSp=bSpec('nerve'),aSp=bSpec('artery'),vSp=bSpec('vein');
+
+  const anyVSel=selectedVessels.size>0, anyMSel=selectedMuscles.size>0;
+  const anySel=anyVSel||anyMSel||((typeof selectedNerve!=='undefined')&&selectedNerve);
+
+  // ── BONES ──
+  BONES_N.forEach(name=>{
+    if(tCM===0){
+      if(tXC<0.45){
+        setMat(name,new THREE.MeshBasicMaterial({color:0xc8ccd0,wireframe:true,transparent:true,opacity:lN(0.62,0.34,tXC/0.45),depthTest:false,depthWrite:false,side:THREE.DoubleSide}));
+      } else {
+        const col=lC(0xc8ccd0,0xe8e8e0,(tXC-0.45)/0.55);
+        setMat(name,new THREE.MeshStandardMaterial({color:col,transparent:true,opacity:lN(0.50,0.88,(tXC-0.45)/0.55),roughness:0.45,metalness:0.06,depthWrite:false,side:THREE.DoubleSide}));
+      }
+    } else {
+      setMat(name,new THREE.MeshStandardMaterial({color:lC(0xe8e8e0,0x3a3b44,tCM),transparent:true,opacity:lN(0.88,0.92,tCM),roughness:lN(0.45,0.85,tCM),metalness:lN(0.06,0,tCM),depthWrite:false,side:THREE.DoubleSide}));
+    }
+  });
+
+  // ── MUSCLES ──
+  Object.entries(MUSCLES_N).forEach(([name,info])=>{
+    const isSel=selectedMuscles.has(name);
+    if(isSel) return; // keep selection highlight
+    const mriCol=info.mriCol;
+    const ctGrey=huGrey(45);
+    if(tCM===0){
+      if(tXC<0.4){
+        // Ghost silhouette in x-ray
+        setMat(name,new THREE.MeshBasicMaterial({color:0x7788aa,transparent:true,opacity:0.035,depthTest:false,depthWrite:false,side:THREE.DoubleSide}));
+      } else {
+        setMat(name,new THREE.MeshStandardMaterial({color:lC(0x7788aa,ctGrey,(tXC-0.4)/0.6),transparent:true,opacity:lN(0.035,0.55,(tXC-0.4)/0.6),roughness:0.90,metalness:0,depthWrite:false,side:THREE.DoubleSide}));
+      }
+    } else {
+      setMat(name,new THREE.MeshStandardMaterial({color:lC(ctGrey,mriCol,tCM),transparent:true,opacity:lN(0.55,0.82,tCM),roughness:lN(0.90,0.75,tCM),metalness:0,emissive:tCM>0.5?new THREE.Color(mriCol).multiplyScalar(0.07):new THREE.Color(0),emissiveIntensity:1,depthWrite:false,side:THREE.DoubleSide}));
+    }
+  });
+
+  // ── NERVES ──
+  scene.traverse(obj=>{
+    if(!obj.isMesh) return;
+    const name=getObjName(obj);
+    if(!MESH_TO_NERVE[name]) return;
+    const nName=MESH_TO_NERVE[name];
+    const isSel=nName===selectedNerve;
+    const isDim=selectedNerve&&!isSel;
+    obj.material=new THREE.MeshBasicMaterial({
+      color:isSel?0xff1a1a:isDim?0x1a1a00:nSp.c,
+      transparent:true,opacity:isSel?1.0:isDim?0.04:nSp.o,
+      depthTest:false,depthWrite:false,side:THREE.DoubleSide
+    });
+  });
+
+  // ── ARTERIES ──
+  ARTERIES_N.forEach(name=>{
+    const isSel=selectedVessels.has(name);
+    if(isSel) return;
+    setMat(name,new THREE.MeshBasicMaterial({color:anyVSel?0x0a0000:aSp.c,transparent:true,opacity:anyVSel?0.04:aSp.o,depthTest:false,depthWrite:false,side:THREE.DoubleSide}));
+  });
+
+  // ── VEINS ──
+  VEINS_N.forEach(name=>{
+    const isSel=selectedVessels.has(name);
+    if(isSel) return;
+    setMat(name,new THREE.MeshBasicMaterial({color:anyVSel?0x00000a:vSp.c,transparent:true,opacity:anyVSel?0.04:vSp.o,depthTest:false,depthWrite:false,side:THREE.DoubleSide}));
+  });
+
+  // ── CARTILAGES ──
+  CARTS_N.forEach(name=>{
+    const ct=huGrey(100), mri=0x4a8878;
+    const col=tCM>0?lC(ct,mri,tCM):lC(0x667777,ct,tXC);
+    const op =tCM>0?lN(0.65,0.72,tCM):lN(0.03,0.65,tXC);
+    setMat(name,new THREE.MeshStandardMaterial({color:col,transparent:true,opacity:op,roughness:0.7,metalness:0,depthWrite:false,side:THREE.DoubleSide}));
+  });
+
+  // ── TENDONS ──
+  TENDONS_N.forEach(name=>{
+    const ct=huGrey(80), mri=0x141210;
+    const col=tCM>0?lC(ct,mri,tCM):lC(0x778888,ct,tXC);
+    const op =tCM>0?lN(0.60,0.80,tCM):lN(0.02,0.60,tXC);
+    setMat(name,new THREE.MeshStandardMaterial({color:col,transparent:true,opacity:op,roughness:0.80,metalness:0,depthWrite:false,side:THREE.DoubleSide}));
+  });
+
+  // ── FASCIAS ──
+  FASCIAS_N.forEach(name=>{
+    const col=tCM>0?lC(0x909080,0x201e18,tCM):lC(0x445555,0x909080,tXC);
+    const op =tCM>0?lN(0.30,0.38,tCM):lN(0.01,0.30,tXC);
+    setMat(name,new THREE.MeshStandardMaterial({color:col,transparent:true,opacity:op,roughness:0.85,metalness:0,depthWrite:false,side:THREE.DoubleSide}));
+  });
+
+  // ── LIGAMENTS (dense collagen — grey CT, dark but visible MRI) ──
+  LIGAMENTS_N.forEach(name=>{
+    const ct=huGrey(70), mri=0x26241e;
+    const col=tCM>0?lC(ct,mri,tCM):lC(0x6a7a7a,ct,tXC);
+    const op =tCM>0?lN(0.55,0.72,tCM):lN(0.02,0.55,tXC);
+    setMat(name,new THREE.MeshStandardMaterial({color:col,transparent:true,opacity:op,roughness:0.82,metalness:0,depthWrite:false,side:THREE.DoubleSide}));
+  });
+
+  // ── FAT ──
+  FAT_N.forEach(name=>{
+    const col=tCM>0?lC(huGrey(-100),0xf0e0a8,tCM):lC(0x111108,huGrey(-100),tXC);
+    setMat(name,new THREE.MeshStandardMaterial({color:col,transparent:true,opacity:tCM>0?lN(0.32,0.60,tCM):lN(0.0,0.32,tXC),roughness:0.90,metalness:0,depthWrite:false,side:THREE.DoubleSide}));
+  });
+
+  // ── EVERYTHING ELSE → invisible ──
+  scene.traverse(obj=>{
+    if(!obj.isMesh) return;
+    const name=normName(obj);
+    const rawName=getObjName(obj);
+    const known=BONES_N.has(name)||CARTS_N.has(name)||TENDONS_N.has(name)||
+                FASCIAS_N.has(name)||FAT_N.has(name)||ARTERIES_N.has(name)||
+                VEINS_N.has(name)||LIGAMENTS_N.has(name)||MESH_TO_NERVE[rawName]||(name in MUSCLES_N);
+    if(!known) {
+      obj.material=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthTest:false,depthWrite:false,side:THREE.DoubleSide});
+    }
+  });
+
+  updateLegend(val);
+}
+
+function updateLegend(val){
+  const leg=document.getElementById('imaging-legend');
+  if(val<15||(val>40&&val<60)){leg.classList.remove('visible');return;}
+  leg.classList.add('visible');
+  const e=val>70?[
+    {label:'Ant thigh',color:'#d96030'},{label:'Post thigh',color:'#b84060'},
+    {label:'Medial',   color:'#c03870'},{label:'Gluteal',   color:'#a03050'},
+    {label:'Ant leg',  color:'#d94040'},{label:'Post leg',  color:'#e06080'},
+    {label:'Lat leg',  color:'#c05080'},{label:'Bone void', color:'#0c0c08'},
+    {label:'Fat',      color:'#f0e0a8'},{label:'Nerve',     color:'#f0e890'},
+    {label:'Artery',   color:'#ff1a1a'},{label:'Vein',      color:'#2255ff'},
+  ]:[
+    {label:'Bone',    color:'#e8e8e0'},{label:'Muscle',   color:'#818181'},
+    {label:'Cartilage',color:'#909880'},{label:'Tendon',  color:'#aaa090'},
+    {label:'Nerve',   color:'#eeee88'},{label:'Artery',   color:'#dd2211'},
+    {label:'Vein',    color:'#2244cc'},
+  ];
+  leg.innerHTML=e.map(x=>`<div class="ileg"><div class="ileg-dot" style="background:${x.color}"></div>${x.label}</div>`).join('');
+}
+
+function updateLabels(val){
+  document.getElementById('lbl-xray').className=val<25?'active':'';
+  document.getElementById('lbl-ct').className  =val>=25&&val<=75?'active':'';
+  document.getElementById('lbl-mri').className =val>75?'active':'';
+  const n=[
+    [0,5,'X-Ray — skeletal projection'],[5,25,'X-Ray → CT transition'],
+    [25,75,'CT — Hounsfield greyscale'],[75,95,'CT → MRI transition'],
+    [95,100,'MRI — false-colour T1'],
+  ];
+  const found=n.find(([lo,hi])=>val>=lo&&val<=hi);
+  document.getElementById('imaging-mode-name').textContent=found?found[2]:'';
+}
+
+const slider=document.getElementById('imaging-slider');
+slider.addEventListener('input',()=>{const v=parseInt(slider.value);updateLabels(v);applyImaging(v);});
+slider.value=50; updateLabels(50);
+window.applyImaging = applyImaging;  // expose for pathology/lig-tendon IIFE
+
+// Apply once model is loaded (poll meshMap)
+let _inited=false;
+const _poll=setInterval(()=>{
+  const ready=[...BONES_N].some(n=>meshMap[n]);
+  if(ready&&!_inited){_inited=true;clearInterval(_poll);applyImaging(50);}
+},300);
+
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════
+  PATHOLOGIES v3 — geometry-following lesions (clipping + vertex sampling)
+  + Ligaments & Tendons browser
+  ═══════════════════════════════════════════════════════════════ -->
+<style>
+.sidebar-tab-row { flex-wrap: wrap; }
+.sidebar-tab { min-width: 20%; padding: 6px 2px; font-size: 8.5px; }
+
+#pathology-panel, #ligten-panel { padding-bottom: 12px; }
+.path-cat-label {
+  padding: 9px 16px 4px; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px; color: #c88;
+  border-top: 1px solid #1e1e30; margin-top: 4px;
+}
+.path-cat-label:first-child { border-top: none; margin-top: 0; }
+.path-cat-label.vascular { color: #d66; }
+.path-cat-label.msk      { color: #da8; }
+.path-cat-label.neuro    { color: #8ad; }
+.path-cat-label.lig      { color: #9c9; }
+.path-cat-label.ten      { color: #cc9; }
+.path-item, .lt-item {
+  padding: 4px 16px; font-size: 11px; color: #999; cursor: pointer;
+  border-left: 2px solid transparent; transition: all 0.12s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.45;
+}
+.path-item:hover, .lt-item:hover { color: #fff; background: rgba(255,255,255,0.04); }
+.path-item.active { color: #ff6; border-left-color: #ff6; background: rgba(255,255,100,0.08); font-weight: 600; }
+.lt-item.active   { color: #9f9; border-left-color: #6c6; background: rgba(120,255,120,0.08); font-weight: 600; }
+
+#path-player {
+  position: absolute; bottom: 20px; right: 20px; width: 320px;
+  background: rgba(10,8,16,0.96); border: 1px solid #3a2a40;
+  border-radius: 11px; padding: 16px; display: none;
+  backdrop-filter: blur(12px); z-index: 12;
+}
+#path-player h3 { font-size: 14px; color: #ff7; margin-bottom: 4px; font-weight: 700; line-height: 1.25; }
+#path-player .path-cat { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #a77; margin-bottom: 9px; }
+#path-summary { font-size: 11px; color: #bbb; line-height: 1.55; margin-bottom: 12px; }
+#stage-chips { display: flex; gap: 5px; margin-bottom: 10px; }
+.stage-chip {
+  flex: 1; text-align: center; padding: 6px 3px; border-radius: 6px;
+  font-size: 9.5px; font-weight: 700; cursor: pointer; border: 1px solid #2a2a3a;
+  color: #667; background: rgba(255,255,255,0.02); transition: all 0.15s; line-height: 1.2;
+}
+.stage-chip .st-time { display: block; font-size: 8px; font-weight: 500; color: #556; margin-top: 2px; }
+.stage-chip.active { border-color: #ff7; color: #ff7; background: rgba(255,255,100,0.10); }
+.stage-chip.active .st-time { color: #aa8; }
+#stage-desc {
+  font-size: 11px; color: #cdb; line-height: 1.5; min-height: 48px;
+  padding: 9px 10px; background: rgba(255,255,120,0.04);
+  border-radius: 7px; border-left: 2px solid #665; margin-bottom: 11px;
+}
+.path-controls { display: flex; align-items: center; gap: 10px; }
+#path-play {
+  width: 34px; height: 34px; border-radius: 50%; border: none;
+  background: #ff7; color: #221; font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.15s;
+}
+#path-play:hover { background: #ffa; }
+#path-scrub {
+  -webkit-appearance: none; appearance: none; flex: 1; height: 4px;
+  background: linear-gradient(90deg,#e88 0%,#ec6 50%,#888 100%); border-radius: 2px; outline: none; cursor: pointer;
+}
+#path-scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%; background: #ff7; border: 2px solid #221; cursor: grab; }
+#path-scrub::-moz-range-thumb { width:15px;height:15px;border-radius:50%;background:#ff7;border:2px solid #221;cursor:grab; }
+#path-warning {
+  margin-top: 11px; padding: 9px 11px; border-radius: 7px;
+  background: rgba(255,40,40,0.12); border: 1px solid rgba(255,60,60,0.4);
+  color: #f99; font-size: 10.5px; line-height: 1.45; display: none;
+}
+#path-warning.show { display: block; animation: pulseWarn 1.4s ease-in-out infinite; }
+@keyframes pulseWarn { 0%,100%{border-color:rgba(255,60,60,0.4);} 50%{border-color:rgba(255,120,120,0.9);} }
+#path-close { position: absolute; top: 12px; right: 13px; cursor: pointer; color: #667; font-size: 16px; line-height: 1; background: none; border: none; }
+#path-close:hover { color: #f88; }
+.lt-search { margin: 8px 12px; width: calc(100% - 24px); background:#0a0a16; border:1px solid #222; border-radius:6px; color:#ccc; font-size:11px; padding:6px 9px; outline:none; }
+.lt-search:focus { border-color:#6c6; }
+</style>
+
+<div id="path-player">
+  <button id="path-close" onclick="closePathology()">✕</button>
+  <h3 id="path-title">—</h3>
+  <div class="path-cat" id="path-cat-text">—</div>
+  <div id="path-summary"></div>
+  <div id="stage-chips"></div>
+  <div id="stage-desc"></div>
+  <div class="path-controls">
+    <button id="path-play" onclick="togglePathPlay()">▶</button>
+    <input type="range" id="path-scrub" min="0" max="1000" value="0">
+  </div>
+  <div id="path-warning"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+function norm(s){ return String(s).replace(/\s/g,'_').replace(/[\[\]\.:\/]/g,''); }
+
+function meshesFor(rawName){
+  const n=norm(rawName);
+  if(window.meshMapAll&&window.meshMapAll[n]) return window.meshMapAll[n];
+  if(typeof meshMap!=='undefined'&&meshMap[n]) return [meshMap[n]];
+  return [];
+}
+function origMesh(rawName){
+  const n=norm(rawName);
+  return (typeof meshMap!=='undefined')?meshMap[n]:null;
+}
+function setPath(rawName, mat){
+  for(const m of meshesFor(rawName)){
+    if(Array.isArray(m.material)) m.material=m.material.map(()=>mat.clone());
+    else m.material=mat.clone();
+  }
+}
+function worldBox(rawName){
+  const m=origMesh(rawName); if(!m) return null;
+  try{ return new THREE.Box3().setFromObject(m); }catch(e){ return null; }
+}
+function lC(a,b,t){const ar=(a>>16)&0xff,ag=(a>>8)&0xff,ab=a&0xff,br=(b>>16)&0xff,bg=(b>>8)&0xff,bb=b&0xff;return((Math.round(ar+(br-ar)*t))<<16)|((Math.round(ag+(bg-ag)*t))<<8)|(Math.round(ab+(bb-ab)*t));}
+
+// ─────────────────────────────────────────────────────────────
+// LESION ENGINE — overlay clones of REAL meshes + clipping planes
+// This makes pathologies follow the true vessel/ligament shape.
+// ─────────────────────────────────────────────────────────────
+let lesionGroup=null;
+function ensureGroup(){ if(!lesionGroup&&typeof scene!=='undefined'){ lesionGroup=new THREE.Group(); lesionGroup.name='__lesions'; scene.add(lesionGroup);} return lesionGroup; }
+function clearLesions(){
+  if(!lesionGroup) return;
+  for(let i=lesionGroup.children.length-1;i>=0;i--){
+    const m=lesionGroup.children[i]; lesionGroup.remove(m);
+    if(m.geometry&&!m.userData.sharedGeo) m.geometry.dispose();
+    if(m.material) m.material.dispose();
+  }
+}
+// Clone the actual mesh as an overlay with a new material (follows real shape!)
+function overlayClone(rawName, material){
+  const src=origMesh(rawName); if(!src) return null;
+  const clone=new THREE.Mesh(src.geometry, material);
+  clone.userData.sharedGeo=true;            // don't dispose shared geometry
+  src.updateWorldMatrix(true,false);
+  clone.matrixAutoUpdate=false;
+  clone.matrix.copy(src.matrixWorld);
+  clone.renderOrder=7;
+  ensureGroup().add(clone);
+  return clone;
+}
+// Sample world-space points on a mesh surface (for placing small nodules)
+function sampleSurface(rawName, count){
+  const src=origMesh(rawName); if(!src||!src.geometry||!src.geometry.attributes.position) return [];
+  src.updateWorldMatrix(true,false);
+  const pos=src.geometry.attributes.position, N=pos.count, pts=[];
+  const step=Math.max(1,Math.floor(N/count));
+  for(let i=0;i<N;i+=step){ pts.push(new THREE.Vector3().fromBufferAttribute(pos,i).applyMatrix4(src.matrixWorld)); }
+  return pts;
+}
+function smallSphere(color, radius){
+  const geo=new THREE.SphereGeometry(radius,12,10);
+  const mat=new THREE.MeshStandardMaterial({color,transparent:true,opacity:0.95,roughness:0.5,metalness:0,emissive:new THREE.Color(color).multiplyScalar(0.25),emissiveIntensity:1,depthTest:true,depthWrite:false,side:THREE.DoubleSide});
+  const m=new THREE.Mesh(geo,mat); m.renderOrder=8; ensureGroup().add(m); return m;
+}
+
+const STAGE_BANDS=[[0,0.40],[0.40,0.72],[0.72,1.0]];
+function stageIndex(p){ for(let i=0;i<STAGE_BANDS.length;i++){ if(p>=STAGE_BANDS[i][0]&&p<=STAGE_BANDS[i][1]) return i; } return 2; }
+function bandLocal(p){ const i=stageIndex(p); const[a,b]=STAGE_BANDS[i]; return (p-a)/(b-a||1); }
+
+// ─────────────────────────────────────────────────────────────
+// PATHOLOGY LIBRARY v3
+// ─────────────────────────────────────────────────────────────
+const PATHOLOGIES = {
+
+  'Deep Vein Thrombosis (DVT)': {
+    category:'vascular',
+    summary:'A thrombus forms inside a deep vein and propagates proximally. The clot is rendered as the real vein turning thrombus-red, growing UP the venous tree via a moving boundary — distal calf veins first, then popliteal, femoral, iliac. Reaching the IVC risks pulmonary embolism.',
+    chain:['Posterior tibial vein.r','Popliteal vein.r','Femoral vein.r','Deep femoral vein.r'],
+    stages:[
+      {label:'Acute',    time:'0–14 days', desc:'Fresh occlusive thrombus fills and distends the vein. It propagates proximally up the deep system — the red clot front climbs the leg. Highest embolic risk here.'},
+      {label:'Subacute', time:'2 wk–6 mo', desc:'Thrombus organises, retracts and begins to recanalise. It darkens and adheres to the wall, lowering embolic risk.'},
+      {label:'Chronic',  time:'>6 months', desc:'Organised fibrotic residual with wall thickening and valve damage (post-thrombotic syndrome). Partly recanalised but scarred.'},
+    ],
+    warningAt:{from:0.30,to:0.40,html:'⚠ PROXIMAL PROPAGATION — thrombus reaching iliac / IVC. Risk of pulmonary embolism (PE).'},
+    build(){
+      // combined vertical extent of the chain → one clip plane sweeps the clot upward
+      const box=new THREE.Box3(); let any=false;
+      this.chain.forEach(v=>{ const b=worldBox(v); if(b){ box.union(b); any=true; }});
+      this._yMin = any? box.min.y : 0; this._yMax = any? box.max.y : 1;
+      // clip plane normal -Y: visible where y <= constant. Grow constant yMin→yMax to climb up.
+      this._clip=new THREE.Plane(new THREE.Vector3(0,-1,0), this._yMin);
+      // red clot overlay clones of each vein, all sharing the clip plane (depthTest off → show through)
+      this._clones=this.chain.map(v=>overlayClone(v, new THREE.MeshBasicMaterial({
+        color:0xcc1414, transparent:true, opacity:0.95,
+        clippingPlanes:[this._clip], depthTest:false, depthWrite:false, side:THREE.DoubleSide
+      }))).filter(Boolean);
+    },
+    update(p){
+      const stg=stageIndex(p), lp=bandLocal(p);
+      // base veins patent blue
+      this.chain.forEach(v=>setPath(v,new THREE.MeshBasicMaterial({color:0x2a48b8,transparent:true,opacity:0.30,depthTest:false,depthWrite:false,side:THREE.DoubleSide})));
+      // clot front climbs during acute; full afterwards. constant = yMin..yMax (positive)
+      const frac = stg===0 ? lp : 1;
+      if(this._clip) this._clip.constant = this._yMin + (this._yMax-this._yMin)*frac;
+      const clotCol = stg===0 ? lC(0xcc1414,0x8a0606,lp) : stg===1 ? lC(0x8a0606,0x5a201a,lp) : lC(0x5a201a,0x46403a,lp);
+      this._clones.forEach(c=>{ if(!c) return;
+        c.material.color.setHex(clotCol);
+        c.material.opacity = stg===2?0.8:0.95;
+      });
+    }
+  },
+
+  'Peripheral Arterial Disease (PAD)': {
+    category:'vascular',
+    summary:'Atherosclerosis narrows the leg arteries, worst distally. The artery is shown converting from healthy red to diseased grey via a boundary that spreads, with calcified plaque nodules studding the wall. Perfusion fades toward the foot.',
+    chain:['Femoral artery.r','Popliteal artery.r','Anterior tibial artery.r','Posterior tibial artery.r'],
+    stages:[
+      {label:'Claudication', time:'Stage I–II', desc:'Plaque narrows the lumen. Flow is adequate at rest but insufficient on exertion — cramping calf pain when walking.'},
+      {label:'Rest pain',    time:'Stage III',  desc:'Severe stenosis. Perfusion fails even at rest — burning forefoot pain at night. Tissue at risk.'},
+      {label:'Critical ischaemia', time:'Stage IV', desc:'Near/complete occlusion with collateral dependence. Ulceration and gangrene of the foot — limb-threatening.'},
+    ],
+    build(){
+      // diseased-grey overlay of the arteries, revealed distal→proximal by a clip plane
+      const box=new THREE.Box3(); let any=false;
+      this.chain.forEach(a=>{ const b=worldBox(a); if(b){ box.union(b); any=true; }});
+      this._yMin=any?box.min.y:0; this._yMax=any?box.max.y:1;
+      // disease spreads distal→proximal: visible where y<=constant, grow constant up
+      this._clip=new THREE.Plane(new THREE.Vector3(0,-1,0), this._yMin);
+      this._clones=this.chain.map(a=>overlayClone(a,new THREE.MeshBasicMaterial({
+        color:0x6a655c, transparent:true, opacity:0.85,
+        clippingPlanes:[this._clip], depthTest:false, depthWrite:false, side:THREE.DoubleSide
+      }))).filter(Boolean);
+      // calcified plaque nodules sampled along arteries (small!)
+      this._nodules=[];
+      this.chain.forEach(a=>{
+        const b=worldBox(a); if(!b) return;
+        const s=b.getSize(new THREE.Vector3());
+        const r=Math.max(0.004, Math.min(s.x,s.z)*0.5);   // nodule ~ artery half-thickness
+        const pts=sampleSurface(a, 8);
+        pts.forEach((pt,k)=>{ if(k%2) return; const nd=smallSphere(0xe8e2cc, r); nd.position.copy(pt); nd.userData.base=r; this._nodules.push(nd); });
+      });
+    },
+    update(p){
+      const stg=stageIndex(p);
+      // healthy arteries red, dimming distally
+      this.chain.forEach((a,i)=>{
+        const distal=(i+1)/this.chain.length, sev=Math.min(1,(p*1.1)*(0.5+distal));
+        setPath(a,new THREE.MeshBasicMaterial({color:lC(0xcc3322,0x402020,sev),transparent:true,opacity:Math.max(0.14,0.75-sev*0.5),depthTest:false,depthWrite:false,side:THREE.DoubleSide}));
+      });
+      // disease grey spreads up with progress
+      if(this._clip) this._clip.constant = this._yMin + (this._yMax-this._yMin)*Math.min(1,p*1.15);
+      this._clones.forEach(c=>{ if(c) c.material.opacity=0.55+p*0.3; });
+      // plaque nodules thicken & calcify
+      this._nodules.forEach(nd=>{ const g=0.6+p*1.3; const r=nd.userData.base*g; nd.scale.set(r/nd.userData.base, r/nd.userData.base, r/nd.userData.base);
+        const col=lC(0xddcc88,0xeeeee0,Math.min(1,p*1.2)); nd.material.color.setHex(col); nd.material.emissive.setHex(col).multiplyScalar(0.12); });
+      if(stg===2){['Dorsal pedis artery.r','Medial plantar artery.r','Lateral plantar artery.r'].forEach(a=>setPath(a,new THREE.MeshBasicMaterial({color:0x332022,transparent:true,opacity:0.5,depthTest:false,depthWrite:false,side:THREE.DoubleSide})));}
+    }
+  },
+
+  'Varicose Veins / CVI': {
+    category:'vascular',
+    summary:'Valve incompetence in the great saphenous vein causes reflux and venous hypertension. The vein engorges purple-blue and develops bulging varicosity knots studded along its true course; advanced disease brings skin changes at the ankle.',
+    chain:['Great saphenous vein.r','Small saphenous vein.r','Accessory saphenous vein.r'],
+    stages:[
+      {label:'Reflux',     time:'Early',      desc:'Valves fail to coapt; blood refluxes on standing. Mild engorgement — the vein looks fuller and bluer.'},
+      {label:'Dilation',   time:'Established', desc:'Venous hypertension dilates the vein into tortuous, bulging varicosities along its length. Aching, heaviness, oedema.'},
+      {label:'Skin change',time:'Advanced',   desc:'Chronic hypertension drives haemosiderin staining, lipodermatosclerosis and ulceration around the medial malleolus.'},
+    ],
+    build(){
+      // small varicosity knots ON the vein surface (sampled points), sized to vein thickness
+      this._knots=[];
+      this.chain.forEach(v=>{
+        const b=worldBox(v); if(!b) return;
+        const s=b.getSize(new THREE.Vector3());
+        const r=Math.max(0.005, Math.min(s.x,s.z)||0.008);
+        const pts=sampleSurface(v, 14);
+        pts.forEach((pt,k)=>{ const kn=smallSphere(0x4a2d8a, r); kn.position.copy(pt); kn.userData={base:r, phase:k}; this._knots.push(kn); });
+      });
+    },
+    update(p){
+      const stg=stageIndex(p);
+      const veinCol = stg===0?0x3a3aa0:stg===1?0x5a2d9a:0x6a2d8a;  // engorged blue→purple
+      this.chain.forEach(v=>setPath(v,new THREE.MeshBasicMaterial({color:veinCol,transparent:true,opacity:0.6,depthTest:false,depthWrite:false,side:THREE.DoubleSide})));
+      // knots swell and bulge (tortuous look), pulsing gently
+      this._knots.forEach(kn=>{
+        const grow=0.5+p*1.7;
+        const pulse=0.9+0.1*Math.sin(Date.now()/450 + kn.userData.phase);
+        const r=kn.userData.base*grow*pulse;
+        kn.scale.set((r/kn.userData.base)*1.25, r/kn.userData.base, (r/kn.userData.base)*1.25);
+        const col = stg===0?0x4a2d8a:stg===1?0x5a2d9a:0x7a2d7a;
+        kn.material.color.setHex(col); kn.material.emissive.setHex(col).multiplyScalar(0.2);
+      });
+    }
+  },
+
+  // ───────── MUSCULOSKELETAL — tendon/ligament focused ─────────
+  'ACL Tear': {
+    category:'msk',
+    summary:'Rupture of the anterior cruciate ligament. The ligament is shown intact then splitting: a moving gap clips the mid-substance and the torn ends retract, leaving rotational instability.',
+    chain:['Anterior cruciate ligament.r'],
+    build(){ this._setup('Anterior cruciate ligament.r'); },
+    update(p){ this._rupture(p, 0xff3322, 0x886655, ['Medial meniscus.r','Lateral meniscus.r']); },
+    _setup(lig){
+      const b=worldBox(lig); if(!b){ this._up=null; this._dn=null; return; }
+      const c=b.getCenter(new THREE.Vector3()), s=b.getSize(new THREE.Vector3());
+      const dom=Math.max(s.x,s.y,s.z);
+      this._axis = new THREE.Vector3(s.x===dom?1:0, s.y===dom?1:0, s.z===dom?1:0);
+      this._half = dom*0.5; this._lig=lig;
+      const src=origMesh(lig); src.updateWorldMatrix(true,false);
+      this._baseMatrix = src.matrixWorld.clone();
+      // two full clones we translate apart along the ligament axis (depthTest off → visible)
+      this._up=overlayClone(lig,new THREE.MeshBasicMaterial({color:0xcc2211,transparent:true,opacity:0.95,depthTest:false,depthWrite:false,side:THREE.DoubleSide}));
+      this._dn=overlayClone(lig,new THREE.MeshBasicMaterial({color:0xcc2211,transparent:true,opacity:0.95,depthTest:false,depthWrite:false,side:THREE.DoubleSide}));
+    },
+    _rupture(p, acuteCol, chronicCol, secondary){
+      if(!this._up||!this._dn){ return; }
+      const stg=stageIndex(p), lp=bandLocal(p);
+      // gap opens during acute, then stays separated
+      const gap = (stg===0 ? lp : 1) * this._half * 0.9;
+      const offUp=this._axis.clone().multiplyScalar(+gap*0.5);
+      const offDn=this._axis.clone().multiplyScalar(-gap*0.5);
+      this._up.matrix.copy(this._baseMatrix).premultiply(new THREE.Matrix4().makeTranslation(offUp.x,offUp.y,offUp.z));
+      this._dn.matrix.copy(this._baseMatrix).premultiply(new THREE.Matrix4().makeTranslation(offDn.x,offDn.y,offDn.z));
+      const col = stg===0 ? lC(acuteCol,0xbb3322,lp) : stg===1 ? 0xbb3322 : chronicCol;
+      [this._up,this._dn].forEach(m=>{ m.material.color.setHex(col); });
+      // hide original (it's replaced by the two halves)
+      setPath(this._lig, new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.10,depthTest:false,depthWrite:false,side:THREE.DoubleSide}));
+      if(stg===2 && secondary){ secondary.forEach(m=>setPath(m,new THREE.MeshBasicMaterial({color:0xcc7744,transparent:true,opacity:0.6,depthTest:false,depthWrite:false,side:THREE.DoubleSide}))); }
+    }
+  },
+
+  'Achilles Tendon Rupture': {
+    category:'msk',
+    summary:'Tearing of the calcaneal (Achilles) tendon. The tendon splits with a retracting gap, which later fills with thickened scar.',
+    chain:['Calcaneal tendon.r'],
+    build(){ PATHOLOGIES['ACL Tear']._setup.call(this,'Calcaneal tendon.r'); },
+    update(p){ PATHOLOGIES['ACL Tear']._rupture.call(this, p, 0xff4433, 0xbbaa99, null); },
+  },
+
+  'Lumbar Disc Herniation': {
+    category:'msk',
+    summary:'Nucleus pulposus extrudes through the annulus (commonly L4–L5/L5–S1). The disc itself reddens and a focused posterior protrusion grows toward the nerve root, then shrinks during resorption.',
+    chain:['Annulus fibrosus L4 L5','Annulus fibrosus L5 S1'],
+    build(){
+      this._h=this.chain.map(disc=>{
+        const b=worldBox(disc); if(!b) return null;
+        const c=b.getCenter(new THREE.Vector3()), s=b.getSize(new THREE.Vector3());
+        const r=Math.max(0.006, Math.min(s.x,s.z)*0.45);
+        const bulge=smallSphere(0xee6644, r);
+        return {bulge, c, s, disc, base:r};
+      }).filter(Boolean);
+    },
+    update(p){
+      const stg=stageIndex(p), lp=bandLocal(p);
+      this._h.forEach(h=>{
+        let mag = stg===0 ? lp : stg===1 ? 1 : (1-lp);
+        mag=Math.max(0.15,mag);
+        const g=(0.8+2.0*mag); const r=h.base*g;
+        h.bulge.scale.set(r/h.base*1.1, r/h.base*0.7, r/h.base*1.1);
+        const dir=new THREE.Vector3(0,0,-1);                 // posterior protrusion
+        h.bulge.position.copy(h.c).addScaledVector(dir, r*0.9);
+        const col=stg===0?lC(0xddaa44,0xee6644,lp):stg===1?lC(0xee6644,0xff4422,lp):lC(0xff4422,0x886644,lp);
+        h.bulge.material.color.setHex(col); h.bulge.material.emissive.setHex(col).multiplyScalar(0.25);
+        h.bulge.material.opacity = stg===2?(0.4+0.5*(1-lp)):0.92;
+        setPath(h.disc,new THREE.MeshStandardMaterial({color:col,transparent:true,opacity:0.7,roughness:0.6,metalness:0,depthWrite:false,side:THREE.DoubleSide}));
+      });
+      if(stg>=1){['Schiatic nerve.r','Tibial nerve.r','Common fibular nerve.r'].forEach(n=>setPath(n,new THREE.MeshBasicMaterial({color:0xffdd33,transparent:true,opacity:stg===1?0.75:0.4,depthTest:false,depthWrite:false,side:THREE.DoubleSide})));}
+    }
+  },
+
+  // ───────── NEUROLOGICAL ─────────
+  'Sciatica (Nerve Compression)': {
+    category:'neuro',
+    summary:'Compression/irritation of the sciatic nerve (L4–S3). The nerve inflames along its real course and a bright signal travels distally down it, with pain and possible weakness.',
+    chain:['Schiatic nerve.r','Tibial nerve.r','Common fibular nerve.r'],
+    build(){ this._pts=this.chain.map(n=>{ const b=worldBox(n); return b?b.getCenter(new THREE.Vector3()):null; }).filter(Boolean);
+             this._bead=smallSphere(0xffee44, 0.012); },
+    update(p){
+      const stg=stageIndex(p), lp=bandLocal(p);
+      const col = stg===0?lC(0xffee44,0xffaa22,lp):stg===1?lC(0xffaa22,0xff7722,lp):lC(0xff7722,0x886633,lp);
+      this.chain.forEach((nv,i)=>{ const wave=stg===0?(0.55+0.45*Math.sin(Date.now()/160 - i*0.9)):1;
+        setPath(nv,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:(stg===2?0.5:0.85)*wave,depthTest:false,depthWrite:false,side:THREE.DoubleSide})); });
+      if(this._bead&&this._pts.length>1){
+        const tt=(Date.now()/2200)%1, seg=tt*(this._pts.length-1);
+        const i0=Math.floor(seg),i1=Math.min(this._pts.length-1,i0+1),f=seg-i0;
+        this._bead.position.copy(this._pts[i0].clone().lerp(this._pts[i1],f));
+        const r=1+0.3*Math.sin(Date.now()/150); this._bead.scale.set(r,r,r);
+        this._bead.material.color.setHex(col); this._bead.material.emissive.setHex(col).multiplyScalar(0.4);
+        this._bead.visible = stg!==2;
+      }
+    }
+  },
+
+  'Common Peroneal Nerve Palsy': {
+    category:'neuro',
+    summary:'Injury to the common fibular nerve at the fibular neck. A focal swelling forms at the compression point; chronically the anterior/lateral compartment muscles waste, causing foot drop.',
+    chain:['Common fibular nerve.r','Superficial fibular nerve.r','Deep fibular nerve.r'],
+    build(){ const b=worldBox('Common fibular nerve.r'); const c=b?b.getCenter(new THREE.Vector3()):new THREE.Vector3();
+             this._swell=smallSphere(0xffdd33, 0.013); this._swell.position.copy(c); },
+    update(p){
+      const stg=stageIndex(p);
+      const col=stg===0?0xffdd33:stg===1?0xffaa33:0x997744;
+      const r=(1.0+p*1.4)*(0.9+0.1*Math.sin(Date.now()/200)); this._swell.scale.set(r,r,r);
+      this._swell.material.color.setHex(col); this._swell.material.emissive.setHex(col).multiplyScalar(0.35);
+      this.chain.forEach((nv,i)=>{ const wave=stg===0?(0.55+0.45*Math.sin(Date.now()/170 - i*0.8)):1;
+        setPath(nv,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:(stg===2?0.5:0.85)*wave,depthTest:false,depthWrite:false,side:THREE.DoubleSide})); });
+      if(stg===2){['Tibialis anterior muscle.r','Extensor digitorum longus.r','Fibularis longus muscle.r','Fibularis brevis muscle.r'].forEach(m=>setPath(m,new THREE.MeshStandardMaterial({color:0x6a5550,transparent:true,opacity:0.45,roughness:0.9,metalness:0,depthWrite:false,side:THREE.DoubleSide})));}
+    }
+  },
+
+};
+
+const PATH_CATS=[{key:'vascular',label:'Vascular'},{key:'msk',label:'Musculoskeletal'},{key:'neuro',label:'Neurological'}];
+
+// ── PATHOLOGY SIDEBAR ──
+const pathPanelEl=document.getElementById('pathology-panel');
+function buildPathologyPanel(){
+  let html='';
+  PATH_CATS.forEach(cat=>{
+    const names=Object.entries(PATHOLOGIES).filter(([,v])=>v.category===cat.key).map(([k])=>k);
+    if(!names.length) return;
+    html+=`<div class="path-cat-label ${cat.key}">${cat.label}</div>`;
+    names.forEach(n=> html+=`<div class="path-item" data-path="${n}">${n}</div>`);
+  });
+  pathPanelEl.innerHTML=html;
+  pathPanelEl.querySelectorAll('.path-item').forEach(el=> el.addEventListener('click',()=>selectPathology(el.dataset.path)));
+}
+buildPathologyPanel();
+
+// ═══════════════════════════════════════════════════════════════════
+// LIGAMENTS & TENDONS BROWSER (every one from the GLB)
+// ═══════════════════════════════════════════════════════════════════
+const ALL_LIGAMENTS = ["Annular ligaments of 1st toe A1-A5.r", "Annular ligaments of 2nd toe A1-A5.r", "Annular ligaments of 3rd toe A1-A5.r", "Annular ligaments of 4th toe A1-A5.r", "Annular ligaments of 5th toe A1-A5.r", "Anterior cruciate ligament.r", "Anterior ligament of fibular head.r", "Anterior pubic ligament", "Anterior sacro-iliac ligament.r", "Anterior talocalcaneal ligament.r", "Anterior talofibular ligament.r", "Anterior tibiofibular ligament.r", "Anterior tibiotalar ligament (Tibiospring lig.).r", "Arcuate ligament.r", "Articular capsule of knee joint.r", "Articular capsules of distal interphalangeal joints", "Articular capsules of metatarsophalangeal joints.r", "Articular capsules of proximal interphalangeal.r", "Bifurcatum ligament", "Calcaneocuboid ligament.r", "Calcaneofibular ligament.r", "Calcaneonavicular ligament.r", "Capsule of talocrural joint.r", "Cervical ligament (anterior talocalcaneal ligament).r", "Collateral ligament of proximal interphalangeal joints.r", "Collateral ligaments of distal interphalangeal joints.r", "Collateral ligaments of metatarsophalangeal joints.r", "Cruciform ligaments or 1st toe.r", "Cruciform ligaments or 2nd toe.r", "Cruciform ligaments or 3rd toe.r", "Cruciform ligaments or 4th toe.r", "Cruciform ligaments or 5th toe.r", "Cuneometatarsal interosseus ligaments.r", "Deep transverse metatarsal ligament.r", "Descending part of Iliofemoral ligament.r", "Dorsal calcaneocuboid ligament.r", "Dorsal cuboidonavicular ligament.r", "Dorsal cuneocuboid ligament.r", "Dorsal cuneonavicular ligaments.r", "Dorsal intercuneiform ligaments.r", "Dorsal metatarsal ligaments.r", "Dorsal tarsometatarsal ligaments.r", "Fascia lata.r", "Fibular collateral ligament.r", "Flexor retinaculum of ankle.r", "Gluteal aponeurosis.r", "Hip joint capsule.r", "Iliolumbar ligament .r", "Inferior extensor retinaculum.r", "Inferior fibular retinaculum.r", "Intercornual ligament.r", "Intercuneiform interosseus ligaments.r", "Interossea / Posterior sacro-iliac ligament.r", "Interosseus talocalcaneal ligament.r", "Intersesamoid ligament.r", "Ishciofemoral ligament.r", "Lateral patellar retinaculum (horizontal part).r", "Lateral patellar retinaculum (vertical part).r", "Ligament of head of femur.r", "Ligaments of fibular head.r", "Long plantar ligament.r", "Medial collatertal ligament.r", "Medial patellar retinaculum (horizontal part).r", "Medial patellar retinaculum (vertical part).r", "Medial talocalcaneal ligament.r", "Metatarsal interosseous ligaments.r", "Oblique popliteal ligament.r", "Obturator membrane.r", "Palmar ligament of proximal interphalangeal joints.r", "Palmar ligaments of distal interphalangeal joints.r", "Palmar ligaments of metatarsophalangeal joints.r", "Plantar aponeurosis.r", "Plantar calcaneocuboid ligament.r", "Plantar calcaneonavicular ligament.r", "Plantar cuboideonavicular ligament.r", "Plantar cuneocuboid ligament.r", "Plantar cuneonavicular ligaments.r", "Plantar intercuneiform ligaments.r", "Plantar metatarsal ligaments.r", "Plantar tarsometatarsal ligaments.r", "Posterior cruciate ligament.r", "Posterior ligament of fibular head.r", "Posterior meniscofemoral ligament.r", "Posterior pubic ligament", "Posterior talocalcaneal ligament.r", "Posterior talofibular ligament.r", "Posterior tibiofibular ligament.r", "Posterior tibiotalar ligament.r", "Pubofemoral ligament.r", "Quadriceps common tendon and patellar ligament", "Quadriceps common tendon and patellar ligament.r", "Sacrospinous ligament.r", "Sacrotuberal ligament.r", "Sup, Inf, Ant, Post, Pubic ligaments", "Superficial transverse metatarsal ligament.r", "Superior extensor retinaculum of ankle.r", "Superior fibular retinaculum.r", "Talonavicular ligament.r", "Tibiocalcaneal ligament.r", "Tibionavicular ligament.r", "Transverse acetabular ligament.r", "Transverse ligament of knee.r", "Transverse part of Iliofemoral ligament.r", "Transverse tibiofibular ligament.r"];
+const ALL_TENDONS = ["Calcaneal tendon.r", "Common tendon of Semitendinosus and Long head of biceps femoris", "Common tendon of biceps femoris.r", "Common tendon sheath of fibularis muscles.r", "Extensor digitorum longus tendons.r", "Extensor hallucis longus tendon sheath.r", "Flexor digitorum longus tendon sheath.r", "Flexor hallucis longus tendon sheath.r", "Pes anserinus common tendon.r", "Quadriceps common tendon and patellar ligament", "Quadriceps common tendon and patellar ligament.r", "Semimembranosus bursa deep to tendon.r", "Semimembranosus muscle tendon.r", "Tibialis anterior tendon sheath.r", "Tibialis posterior tendon sheath.r"];
+
+const sidebarEl2=document.getElementById('sidebar');
+// add tab
+const tabRow2=document.querySelector('.sidebar-tab-row');
+if(tabRow2 && !document.getElementById('tab-ligten')){
+  const t=document.createElement('div');
+  t.className='sidebar-tab'; t.id='tab-ligten';
+  t.setAttribute('onclick',"showTab('ligten')");
+  t.textContent='Lig/Tendon';
+  tabRow2.appendChild(t);
+}
+const ligtenPanel=document.createElement('div');
+ligtenPanel.id='ligten-panel'; ligtenPanel.className='side-panel';
+sidebarEl2.appendChild(ligtenPanel);
+
+let selectedLT=new Set();
+function buildLigTenPanel(){
+  let html='<input class="lt-search" id="lt-search" placeholder="Search ligaments / tendons…">';
+  html+=`<div class="path-cat-label ten">Tendons (${ALL_TENDONS.length})</div>`;
+  ALL_TENDONS.forEach(n=> html+=`<div class="lt-item" data-lt="${n.replace(/"/g,'&quot;')}">${n.replace(/\.r$/,'')}</div>`);
+  html+=`<div class="path-cat-label lig">Ligaments (${ALL_LIGAMENTS.length})</div>`;
+  ALL_LIGAMENTS.forEach(n=> html+=`<div class="lt-item" data-lt="${n.replace(/"/g,'&quot;')}">${n.replace(/\.r$/,'')}</div>`);
+  ligtenPanel.innerHTML=html;
+  ligtenPanel.querySelectorAll('.lt-item').forEach(el=> el.addEventListener('click',ev=> selectLT(el.dataset.lt, ev.ctrlKey||ev.metaKey)));
+  const search=document.getElementById('lt-search');
+  search.addEventListener('input',()=>{ const q=search.value.toLowerCase();
+    ligtenPanel.querySelectorAll('.lt-item').forEach(el=>{ el.style.display = el.textContent.toLowerCase().includes(q)?'':'none'; }); });
+}
+function resetLTHighlight(){
+  // restore current imaging look
+  if(window.applyImaging){ const sl=document.getElementById('imaging-slider'); window.applyImaging(sl?parseInt(sl.value):50); }
+}
+function selectLT(rawName, additive){
+  if(!additive){ selectedLT.clear(); }
+  if(selectedLT.has(rawName)) selectedLT.delete(rawName); else selectedLT.add(rawName);
+  resetLTHighlight();
+  ligtenPanel.querySelectorAll('.lt-item').forEach(el=>el.classList.toggle('active', selectedLT.has(el.dataset.lt)));
+  selectedLT.forEach(nm=> setPath(nm, new THREE.MeshBasicMaterial({color:0x66ff88,transparent:false,depthTest:false,depthWrite:false,side:THREE.DoubleSide})));
+  if(selectedLT.size){
+    const last=[...selectedLT].at(-1);
+    document.getElementById('nerve-name').textContent=last.replace(/\.r$/,'')+(selectedLT.size>1?` (+${selectedLT.size-1})`:'');
+    document.getElementById('nerve-root').textContent = ALL_TENDONS.includes(last)?'Tendon':'Ligament';
+    document.getElementById('nerve-territory').textContent='';
+    document.getElementById('path-text').textContent='';
+    document.getElementById('info-panel').style.display='block';
+    document.getElementById('reset-btn').style.display='block';
+  }
+}
+buildLigTenPanel();
+
+// ── PLAYBACK ENGINE ──
+let activePath=null,activePathName=null,pathProgress=0,pathPlaying=false,pathRAF=null,lastT=0;
+const PLAY_SECONDS=14;
+const playerEl=document.getElementById('path-player');
+const scrubEl=document.getElementById('path-scrub');
+const playBtn=document.getElementById('path-play');
+const warnEl=document.getElementById('path-warning');
+
+function selectPathology(name){
+  const path=PATHOLOGIES[name]; if(!path) return;
+  clearLesions();
+  selectedLT.clear(); ligtenPanel.querySelectorAll('.lt-item').forEach(el=>el.classList.remove('active'));
+  activePath=path; activePathName=name; pathProgress=0; pathPlaying=false; playBtn.textContent='▶';
+  pathPanelEl.querySelectorAll('.path-item').forEach(el=>el.classList.toggle('active', el.dataset.path===name));
+  const ip=document.getElementById('info-panel'); if(ip) ip.style.display='none';
+  document.getElementById('path-title').textContent=name;
+  document.getElementById('path-cat-text').textContent=(PATH_CATS.find(c=>c.key===path.category)||{}).label||path.category;
+  document.getElementById('path-summary').textContent=path.summary;
+  const chips=document.getElementById('stage-chips');
+  chips.innerHTML=path.stages.map((s,i)=>`<div class="stage-chip" data-stage="${i}"><span>${s.label}</span><span class="st-time">${s.time}</span></div>`).join('');
+  chips.querySelectorAll('.stage-chip').forEach(chip=>chip.addEventListener('click',()=>{const i=+chip.dataset.stage;const[a,b]=STAGE_BANDS[i];setProgress((a+b)/2);}));
+  playerEl.style.display='block';
+  ensureGroup();
+  try{ if(typeof path.build==='function') path.build(); }catch(e){ console.warn('build failed',name,e); }
+  setProgress(0);
+  focusOnTargets(path.chain);
+}
+function updateStageUI(){
+  const si=stageIndex(pathProgress);
+  document.querySelectorAll('.stage-chip').forEach((c,i)=>c.classList.toggle('active', i===si));
+  document.getElementById('stage-desc').textContent=activePath.stages[si].desc;
+  const w=activePath.warningAt;
+  if(w&&pathProgress>=w.from&&pathProgress<=w.to){ warnEl.innerHTML=w.html; warnEl.classList.add('show'); } else warnEl.classList.remove('show');
+}
+function setProgress(p){ pathProgress=Math.max(0,Math.min(1,p)); scrubEl.value=Math.round(pathProgress*1000);
+  if(activePath){ try{activePath.update(pathProgress);}catch(e){} updateStageUI(); } }
+scrubEl.addEventListener('input',()=>{ pathPlaying=false; playBtn.textContent='▶'; setProgress(parseInt(scrubEl.value)/1000); });
+window.togglePathPlay=function(){ if(!activePath) return; pathPlaying=!pathPlaying; playBtn.textContent=pathPlaying?'❚❚':'▶';
+  if(pathPlaying){ if(pathProgress>=1) pathProgress=0; lastT=performance.now(); loopPath(); } };
+function loopPath(){ if(!pathPlaying) return; const now=performance.now(); const dt=(now-lastT)/1000; lastT=now;
+  setProgress(pathProgress+dt/PLAY_SECONDS); if(pathProgress>=1){ pathPlaying=false; playBtn.textContent='▶'; return; } pathRAF=requestAnimationFrame(loopPath); }
+function ambientPathTick(){ if(activePath){ try{activePath.update(pathProgress);}catch(e){} } requestAnimationFrame(ambientPathTick); }
+ambientPathTick();
+window.closePathology=function(){ activePath=null; activePathName=null; pathPlaying=false; if(pathRAF) cancelAnimationFrame(pathRAF);
+  clearLesions(); playerEl.style.display='none'; warnEl.classList.remove('show');
+  pathPanelEl.querySelectorAll('.path-item').forEach(el=>el.classList.remove('active'));
+  if(window.applyImaging){ const sl=document.getElementById('imaging-slider'); window.applyImaging(sl?parseInt(sl.value):50); } };
+function focusOnTargets(rawNames){ if(!rawNames||!rawNames.length||typeof meshMap==='undefined') return;
+  const box=new THREE.Box3(); let any=false; rawNames.forEach(rn=>{ const m=meshMap[norm(rn)]; if(m){ box.expandByObject(m); any=true; }});
+  if(!any) return; const c=box.getCenter(new THREE.Vector3());
+  if(typeof controls!=='undefined'&&controls.target){ controls.target.lerp(c,0.6); controls.update(); } }
+
+const _origShowTab=window.showTab;
+window.showTab=function(tab){
+  // base showTab only knows 4 tabs; handle ligten + hide others here
+  if(typeof _origShowTab==='function') _origShowTab(tab);
+  document.getElementById('tab-ligten') && document.getElementById('tab-ligten').classList.toggle('active', tab==='ligten');
+  ligtenPanel.classList.toggle('visible', tab==='ligten');
+  // ensure other panels hidden when ligten active
+  if(tab==='ligten'){
+    document.getElementById('nerve-tree') && document.getElementById('nerve-tree').classList.add('hidden');
+    ['vessel-panel','muscle-panel','pathology-panel'].forEach(id=>{ const e=document.getElementById(id); if(e) e.classList.remove('visible'); });
+  }
+  if(tab!=='pathologies'&&activePath){ playerEl.style.display='none'; }
+  else if(tab==='pathologies'&&activePath){ playerEl.style.display='block'; }
+};
+
+})();
+</script>
+</body>
+</html>
